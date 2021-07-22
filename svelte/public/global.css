@@ -2,7 +2,9 @@
 	--base-color: #313131;
 	--content-color: #ffffff;
 }
-
+*{
+	box-sizing: border-box;
+}
 html, body {
 	position: relative;
 	width: 100vw;
