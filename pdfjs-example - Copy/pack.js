@@ -1,6 +1,6 @@
-function pack(box, container, options){
-    let floord = (numerator, bottom)=>{return Math.floor(numerator / bottom)}
-
+function format(box, container, options = {}){
+    let spacing = options.spacing || 0
+    let offset = options.offset || 0
     let landscape = {
         width: Math.max(box.width, box.height),
         height: Math.min(box.width, box.height)
@@ -9,7 +9,17 @@ function pack(box, container, options){
         width: Math.min(box.width, box.height),
         height: Math.max(box.width, box.height)
     }
-    console.log(landscape)
+
+    let floord = (bottom, numerator)=>{
+        let amount = 0
+        let left = bottom
+        while(left >= numerator){
+            amount++
+            left -= numerator + spacing
+        }
+        return amount
+    }
+
     let boxes = []
     let landscapeRows = floord(container.height, landscape.height)
     let landscapeColumns = floord(container.width, landscape.width)
@@ -22,13 +32,13 @@ function pack(box, container, options){
     if(numIfLandscape > numIfPortrait){
         for(let y = 0; y<landscapeRows;y++){
             for(let x = 0; x<landscapeColumns; x++){
-                boxes.push({x:landscape.width*x,y:landscape.height*y,...landscape})
+                boxes.push({x:(landscape.width*x) + (spacing*x) + offset,y:(landscape.height*y) + (spacing*y) + offset,...landscape})
             }
         }
     } else {
         for(let y = 0; y<portraitRows;y++){
             for(let x = 0; x<portraitColumns; x++){
-                boxes.push({x:portrait.width*x,y:portrait.height*y,...portrait})
+                boxes.push({x:(portrait.width*x) + (spacing*x) + offset,y:(portrait.height*y) + (spacing*y) + offset,...portrait})
             }
         }
     }
