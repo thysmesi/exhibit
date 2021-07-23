@@ -7,6 +7,8 @@
 
     let canvas
 
+
+
     onMount(()=>{
 
         let parent = canvas.parentNode

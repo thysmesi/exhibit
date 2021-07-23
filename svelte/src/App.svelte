@@ -47,8 +47,8 @@
 		dpi: 600
 	}
 
-	onMount(()=>{
-		let aspectRatio = options.page.width/options.page.height
+	function resize(){
+        let aspectRatio = options.page.width/options.page.height
 
 		if(pageContainer.clientWidth / pageContainer.clientHeight > aspectRatio){
 			console.log(pageContainer.parentNode)
@@ -65,9 +65,13 @@
 			pageContainer.style.height = `${pageContainer.clientWidth / aspectRatio}px`
 			pageContainer.parentNode.style.flexGrow = 'unset'
 		}
+    }
+
+	onMount(()=>{
+		
 	})
 </script>
-
+<svelte:window on:resize={resize}/>
 <main>
 	<div id="options">
 		<p class="options-section-label">Original Options</p>
