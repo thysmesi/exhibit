@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "svelte-pdf": "^1.0.9"
+  }
+}
