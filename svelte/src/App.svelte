@@ -1,33 +1,30 @@
 <script>
-	import { onMount } from 'svelte';
+	import { afterUpdate } from 'svelte';
 	import CheckMark from './CheckMark.svelte'
 	import NumberInput from './NumberInput.svelte'
 	import HorizontalRadio from './HorizontalRadio.svelte'
 	import PDF from './PDF.svelte'
+	import {samplePDF} from './tests.js'
 	import PdfViewer from 'svelte-pdf';
 
-	let url = 'sample.pdf'
+	let optionsWidth = 460
+	let present
+	let mainWidth
+	let pageContainerHeight
+	let pdfWidth
+	let pdfHeight
 
-	
-	// var pdf = new PDF({
-	// 	pages: [
-	// 		new PDF.Page({
-	// 			width: 8.5 * 72,
-	// 			height: 11 * 72
-	// 		}),
-	// 		new PDF.Page({
-	// 			width: 8.5 * 72,
-	// 			height: 11 * 72
-	// 		})
-	// 	]
-	// })
-
-	// var loadingTask = pdfjsLib.getDocument(url);
-	// loadingTask.promise.then(function(pdf) {
-	// 	console.log(pdf)
-	// });
-
-	let pageContainer
+	afterUpdate(()=>{
+		let aspectRatio = options.page.width / options.page.height
+		let areaWidth = mainWidth - optionsWidth
+		if(areaWidth / pageContainerHeight > aspectRatio){
+			pdfHeight = pageContainerHeight * .95
+			pdfWidth = pageContainerHeight * aspectRatio * .95
+		} else {
+			pdfWidth = areaWidth * .95
+			pdfHeight = areaWidth / aspectRatio * .95
+		}
+	})
 	let options = {
 		page: {
 			width: 8.5,
@@ -46,33 +43,9 @@
 		pack: 'linear', // linear, tumble
 		dpi: 600
 	}
-
-	function resize(){
-        let aspectRatio = options.page.width/options.page.height
-
-		if(pageContainer.clientWidth / pageContainer.clientHeight > aspectRatio){
-			console.log(pageContainer.parentNode)
-			let width = `${pageContainer.clientHeight * aspectRatio}px`
-			pageContainer.style.height = `${pageContainer.clientHeight}px`
-			pageContainer.style.width = width
-			pageContainer.parentNode.style.width = width//
-			pageContainer.parentNode.style.flexGrow = 'unset'
-		} else {
-			console.log(pageContainer.parentNode)
-			let width = `${pageContainer.clientWidth}px`
-			pageContainer.style.width = width
-			pageContainer.parentNode.style.width = width
-			pageContainer.style.height = `${pageContainer.clientWidth / aspectRatio}px`
-			pageContainer.parentNode.style.flexGrow = 'unset'
-		}
-    }
-
-	onMount(()=>{
-		
-	})
 </script>
-<svelte:window on:resize={resize}/>
-<main>
+<svelte:window/>
+<main bind:clientWidth={mainWidth} bind:clientHeight={mainHeight}>
 	<div id="options">
 		<p class="options-section-label">Original Options</p>
 		<div class="option-container">
@@ -118,9 +91,9 @@
 			<NumberInput placeholder="Max DPI" value={600} min={0} max={1200} change={(value)=>{options.dpi=value}}/>
 		</div>
 	</div>
-	<div id="present">
-		<div id="page-container" bind:this={pageContainer}>
-			<PDF />
+	<div id="present" bind:this={present}>
+		<div style="width:{pdfWidth}" id="page-container" bind:clientHeight={pageContainerHeight}>
+			<PDF data={samplePDF} width={pdfWidth} height={pdfHeight}/>
 		</div>
 	</div>
 </main>
@@ -176,16 +149,12 @@
 	}
 	#present{
 		height: 100%;
-		flex-grow: 1;
-		background-color: coral;
 		padding: 50px 0 0 0;
 	}
 	#page-container{
-		width: 100%;
 		height: 100%;
-		background-color: cornflowerblue;
 		display: flex;
 		justify-content: center;
-		align-items: center;
+		align-items: flex-start;
 	}
 </style>
