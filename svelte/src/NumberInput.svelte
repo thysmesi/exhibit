@@ -1,8 +1,10 @@
 <script>
+    export let style = ""
     export let placeholder = "";
     export let value = ""
     export let min = 0
     export let max = 100
+    export let input = ()=>{}
     export let change = ()=>{}
 
     function handleInput(event){
@@ -26,10 +28,14 @@
 
         event.target.value = output
 
-        change(output == '' ? 0 : output)
+        input(output == '' ? 0 : output)
+    }
+    function handleChange(event){
+        let value = parseFloat(event.target.value)
+        change(isNaN(value) ? 0 : value)
     }
 </script>
-<input placeholder={placeholder} bind:value={value} on:input={handleInput}/>
+<input style={style} placeholder={placeholder} bind:value={value} on:input={handleInput} on:change={handleChange}/>
 <style>
     input{
         width: 100px;
@@ -38,7 +44,7 @@
         color:  #949494;
         background-color: inherit;
         border: none;
-        border-bottom: 2px solid #949494;
+        border-bottom: 1.5px solid #949494;
         display: flex;
         justify-content: center;
         align-items: center;

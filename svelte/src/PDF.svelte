@@ -32,9 +32,11 @@
     function draw() {
         canvas.width = width
         canvas.height = height
+        canvas.style.zoom = `${1}`
+
         let context = canvas.getContext('2d')
         if(pdf && page) {
-            scale = 1
+            // scale = 1
             let viewport = page.getViewport({scale:1,rotation:0,dontFlip:false})
             let rescale = Math.min(width / viewport.viewBox[2], height / viewport.viewBox[3])
             viewport = page.getViewport({scale: rescale,rotation:0,dontFlip:false})
@@ -55,7 +57,7 @@
         if(redraw){
             clearTimeout(redraw)
         }
-        redraw = setTimeout(()=>{redraw=false;draw()}, 80)
+        redraw = setTimeout(()=>{redraw=false;draw()}, 60)
     }
     function handleMouseenter(event) {
         box = true
