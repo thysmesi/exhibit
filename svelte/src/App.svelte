@@ -92,8 +92,8 @@
 	</div>
 	<div id="present" bind:this={present}>
 		<div class="contained-option" id="page-options">
-			<NumberInput value={options.page.width} max={100} min={1} style="height: 20px; width: 80px; text-align:left;font-size: 1rem;" placeholder="w" change={(value)=>{options.page.width=value}}/>
-			<NumberInput value={options.page.height} max={100} min={1} style="height: 20px; width: 80px; text-align:left;font-size: 1rem;" placeholder="h" change={(value)=>{options.page.height=value}}/>
+			<NumberInput value={options.page.width} max={100} min={1} style="margin-right:10px;height: 20px; width: 40px;font-size: 1rem;" placeholder="w" change={(value)=>{options.page.width=value}}/>
+			<NumberInput value={options.page.height} max={100} min={1} style="margin-right:15px;height: 20px; width: 40px;font-size: 1rem;" placeholder="h" change={(value)=>{options.page.height=value}}/>
 			<div style="cursor:pointer;"><span class="dot"></span></div>
 		</div>
 		<div style="width:{pdfWidth}" id="page-container" bind:clientHeight={pageContainerHeight}>
@@ -122,9 +122,10 @@
 		height: 756px;
 	}
 	#page-options{
-		width: 250px;
+		width: 145px;
 		margin-bottom: 15px;
-		justify-content: space-between;
+		padding-right: 10px;
+		/* justify-content: space-around; */
 	}
 	#fit{
 		cursor: pointer;

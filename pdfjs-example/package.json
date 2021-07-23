@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "dependencies": {
+    "pdfjs": "^2.4.4",
+    "pdfmake": "^0.2.0"
+  }
+}

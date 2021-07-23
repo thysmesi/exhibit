@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "pdfjs-dist": "^2.8.335",
-    "sirv-cli": "^1.0.0",
-    "svelte-pdf": "^1.0.9"
+    "sirv-cli": "^1.0.0"
   }
 }
