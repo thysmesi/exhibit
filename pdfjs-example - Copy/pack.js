@@ -1,4 +1,4 @@
-function format(box, container, options = {}){
+function pack(box, container, options = {}){
     let spacing = options.spacing || 0
     let offset = options.offset || 0
     let landscape = {

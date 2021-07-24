@@ -7,13 +7,16 @@
     export let input = ()=>{}
     export let change = ()=>{}
 
+    let first = value
+
     function handleInput(event){
+        console.log(event.target)
         let value = event.target.value
-        if(value == '') {
+        if(value === '') {
             event.target.value = value
             return
         }
-
+        
         let output = value
         if(isNaN(event.data) && event.data != '.' && event.data != '-') output = output.substring(0, output.length - 1);
         if(value.replace(/[^.]/g, "").length > 1) output = output.substring(0, output.length - 1);
@@ -35,7 +38,7 @@
         change(isNaN(value) ? 0 : value)
     }
 </script>
-<input style={style} placeholder={placeholder} bind:value={value} on:input={handleInput} on:change={handleChange}/>
+<input style={style} placeholder={placeholder} value={first} on:input={handleInput} on:change={handleChange}/>
 <style>
     input{
         width: 100px;
