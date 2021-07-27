@@ -1,42 +1,77 @@
 <script>
-    import { afterUpdate } from 'svelte';
+    import { afterUpdate, beforeUpdate } from 'svelte';
     export let data
     export let width
     export let height
-    export let page = 1
+    export let pageNumber = 1
 
     import pdfjs from "pdfjs-dist";
  	import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 
 	pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+    
+    async function load(){
+        // console.log(data)
+        console.log('a')
+        pdf = await pdfjs.getDocument({data}).promise
+        pages = pdf.numPages
+        page = await pdf.getPage(pageNumber)
+        draw()
+    }
 
     let canvas
     let pdf
-    let pageNumber = page
+    let page
     let redraw
     let box = false
     let renderTask = false
-    let pages
+    let previousWidth
+    let pages = 1
+    let previousScale = 0
 
-    var loadingTask = pdfjs.getDocument({data});
-    loadingTask.promise.then(function(loaded) {
-        pdf = loaded
-        pages = pdf.numPages
-        pdf.getPage(pageNumber).then(function(loaded) {
-            page = loaded
-            draw()
-        })
-    });
+    // $: 
+
+    // $: pdf = pdfjs.getDocument({data}).promise.then(function(loaded) {
+    //     return loaded
+    //         // pdf = loaded
+    //         // pages = pdf.numPages
+    //         // pdf.getPage(pageNumber).then(function(loaded) {
+    //             // page = loaded
+    //             // draw()
+    //         // })
+    //     });
+    // $: pages = pdf.numPages
+    // $: page = pdf.getPage(pageNumber).then(function(loaded) {
+    //         return loaded
+    //     })
     afterUpdate(resize)
-    
+    afterUpdate(()=>{
+        load()
+        // if(data != lastData{
+            // console.log(data != lastData)
+            // lastData = data
+            // console.log(data == lastData)
+            console.log('a')
+
+            // var loadingTask = pdfjs.getDocument({data});
+            // loadingTask.promise.then(function(loaded) {
+            //     pdf = loaded
+            //     pages = pdf.numPages
+            //     pdf.getPage(pageNumber).then(function(loaded) {
+            //         page = loaded
+            //         draw()
+            //     })
+            // });
+        // }
+    })
+
     function draw() {
-        canvas.width = width
-        canvas.height = height
-        canvas.style.zoom = `${1}`
+        // canvas.width = width
+        // canvas.height = height
+        // canvas.style.zoom = `${1}`
 
         let context = canvas.getContext('2d')
         if(pdf && page) {
-            // scale = 1
             let viewport = page.getViewport({scale:1,rotation:0,dontFlip:false})
             let rescale = Math.min(width / viewport.viewBox[2], height / viewport.viewBox[3])
             viewport = page.getViewport({scale: rescale,rotation:0,dontFlip:false})
@@ -45,19 +80,22 @@
                 viewport: viewport,
             };
 
-            if(renderTask){page.cleanup()}
-            renderTask = page.render(renderContext)
-            renderTask.promise.then(()=>{renderTask=false})
+            // if(renderTask){console.log('renderdone');page.cleanup()}
+            page.render(renderContext)
+            // renderTask.promise.then(()=>{renderTask=false})
         }
     }
     function resize(){
         let scale = Math.min(width / canvas.width, height / canvas.height)
-        canvas.style.zoom = `${scale}`
+        if(scale != previousScale){
+            previousScale = scale
+            canvas.style.zoom = `${scale}`
 
-        if(redraw){
-            clearTimeout(redraw)
+            if(redraw){
+                clearTimeout(redraw)
+            }
+            redraw = setTimeout(()=>{redraw=false;draw()}, 60)
         }
-        redraw = setTimeout(()=>{redraw=false;draw()}, 60)
     }
     function handleMouseenter(event) {
         box = true

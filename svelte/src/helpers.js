@@ -1,105 +1,75 @@
-export var digitCount = function(num) {
-    if(num === 0 ) return 1
+import pdfjs from "pdfjs-dist";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+export var digitCount = function (num) {
+    if (num === 0) return 1
     return Math.floor(Math.log10(Math.abs(num))) + 1
 }
-export async function fitImageToSize(data, output = {}){
-    output.normalAspectRatio = Math.max(output.width, output.height) / Math.min(output.width,output.height)
-    output.aspectRatio = output.width / output.height
+export async function selectFiles(types) {
+    let promise = new Promise((resolve) => {
+        let input = document.createElement("input")
+        input.type = "file"
+        input.accept = types
+        input.multiple = true
 
-    var promise = new Promise((resolve)=>{
-        var image = new Image(); 
-        image.onload = function(){
-            image.normalAspectRatio = Math.max(image.width, image.height) / Math.min(image.width,image.height)
-            image.aspectRatio = image.width / image.height
+        input.onchange = () => {
+            let output = []
 
-            let canvas = document.createElement('canvas')
-            let context = canvas.getContext('2d')
-
-            if(image.aspectRatio >= 1 && output.aspectRatio >= 1 || image.aspectRatio <= 1 && output.aspectRatio <= 1){   
-                var hRatio = output.width / image.width
-                var vRatio = output.height / image.height    
-                var ratio  = Math.min ( hRatio, vRatio)
- 
-                canvas.width = image.width*ratio
-                canvas.height = image.height*ratio
-                context.drawImage(image, 0,0, image.width, image.height, 0,0,canvas.width, canvas.height)
-            } else {
-                var hRatio = output.width / image.height
-                var vRatio = output.height / image.width    
-                var ratio  = Math.min ( hRatio, vRatio)
-
-                canvas.height = image.width*ratio
-                canvas.width = image.height*ratio
-
-                let wd2 = canvas.width/2
-                let hd2 = canvas.height/2
-            
-                context.translate(wd2,hd2)
-                context.rotate(Math.PI / 2)
-                context.drawImage(image, 0,0, image.width, image.height,-hd2,-wd2, canvas.height, canvas.width)
+            for (let i = 0; i < input.files.length; i++) {
+                let file = input.files[i]
+                if (
+                    file.type === "application/pdf" ||
+                    file.type === "application/wps-office.pdf" ||
+                    file.type === 'application/pdf' || file.type === 'image/jpg' || file.type === 'image/jpeg' || file.type === "image/png"
+                ) {
+                    output.push(file)
+                }
             }
-            resolve(canvas.toDataURL())
+            resolve(output)
         }
-        image.src = data;
+
+        input.click()
     })
     return promise
 }
-export async function coverImageToSize(data, output = {}){
-    output.normalAspectRatio = Math.max(output.width, output.height) / Math.min(output.width,output.height)
-    output.aspectRatio = output.width / output.height
-    let wd2 = output.width/2
-    let hd2 = output.height/2
+export async function convertFileToBase64(file) {
+    const pdfConvertDpi = 300
 
-    var promise = new Promise((resolve)=>{
-        var image = new Image(); 
-        image.onload = function(){
-            image.normalAspectRatio = Math.max(image.width, image.height) / Math.min(image.width,image.height)
-            image.aspectRatio = image.width / image.height
-    
-            let canvas = document.createElement('canvas')
-            canvas.width = output.width
-            canvas.height = output.height
-            let context = canvas.getContext('2d')
-            let crop = {}
-    
-            if(output.normalAspectRatio < image.normalAspectRatio && image.width > image.height){
-                crop.x = (image.width - (image.height * output.normalAspectRatio)) / 2
-                crop.y = 0
-                crop.width = image.height * output.normalAspectRatio
-                crop.height = image.height
+    return new Promise((resolve, reject) => {
+        if (file.type === "application/pdf")  {
+            let output = []
+            let fr = new FileReader()
+            fr.onload = function(event){
+                var loadingTask = pdfjs.getDocument({data:event.target.result});
+                loadingTask.promise.then(function(pdf) {
+                    for(let i = 1; i <= pdf.numPages; i++){
+                        pdf.getPage(i).then(function(page) {
+                            let viewport = page.getViewport({scale:pdfConvertDpi/72,rotation:0,dontFlip:false})
+                            let canvas = document.createElement('canvas')
+                            canvas.width = viewport.width
+                            canvas.height = viewport.height
+                            let context = canvas.getContext('2d')
+
+                            var renderContext = {
+                                canvasContext: context,
+                                viewport: viewport,
+                            };
+                            let renderTask = page.render(renderContext)
+                            renderTask.promise.then(()=>{
+                                output.push(canvas.toDataURL().split(',')[1])
+                                if(i==pdf.numPages) resolve(output)
+                            })
+                        })
+                    }
+                })
             }
-            if(output.normalAspectRatio < image.normalAspectRatio && image.width < image.height) {
-                crop.x = 0
-                crop.y = (image.height - (image.width * output.normalAspectRatio)) / 2
-                crop.width = image.width
-                crop.height = image.width * output.normalAspectRatio
-            }
-            if(output.normalAspectRatio > image.normalAspectRatio && image.width > image.height) {
-                crop.x = 0
-                crop.y = (image.height - (image.width / output.normalAspectRatio)) / 2
-                crop.width = image.width
-                crop.height = image.width / output.normalAspectRatio
-            }
-            if(output.normalAspectRatio > image.normalAspectRatio && image.width < image.height) {
-                crop.x = (image.width - (image.height / output.normalAspectRatio)) / 2
-                crop.y = 0
-                crop.width = image.height / output.normalAspectRatio
-                crop.height = image.height
-            }
-    
-            if(image.aspectRatio >= 1 && output.aspectRatio >= 1 || image.aspectRatio <= 1 && output.aspectRatio <= 1){
-                context.drawImage(image,crop.x,crop.y,crop.width,crop.height,0,0,canvas.width,canvas.height)
-            } else {
-                context.translate(wd2,hd2)
-                context.rotate(Math.PI / 2)
-                context.drawImage(image,crop.x,crop.y,crop.width,crop.height,-hd2,-wd2,canvas.height,canvas.width)
-            }
-            resolve(canvas.toDataURL())
+            fr.readAsText(file)
+        } else {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve([reader.result.split(',')[1]])
+            reader.onerror = reject;
         }
-        image.src = data; 
-    })
-    return promise
-}
-export async function format(images, options={}){
-
+    });
 }

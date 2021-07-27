@@ -10,7 +10,6 @@
     let first = value
 
     function handleInput(event){
-        console.log(event.target)
         let value = event.target.value
         if(value === '') {
             event.target.value = value
@@ -38,7 +37,7 @@
         change(isNaN(value) ? 0 : value)
     }
 </script>
-<input style={style} placeholder={placeholder} value={first} on:input={handleInput} on:change={handleChange}/>
+<input type="text" style={style} placeholder={placeholder} value={first} on:input={handleInput} on:change={handleChange}/>
 <style>
     input{
         width: 100px;
