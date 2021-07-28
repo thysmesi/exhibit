@@ -1,3 +1,13 @@
+function format(options){
+    let margin2 = margin*2
+    let boxes = pack({
+        width: options.width,
+        height: options.height},{
+        width: options.page.width - margin2,
+        height: options.page.height - margin2
+    })
+}
+
 function pack(box, container, options = {}){
     let spacing = options.spacing || 0
     let offset = options.offset || 0
@@ -25,14 +35,14 @@ function pack(box, container, options = {}){
     let landscapeColumns = floord(container.width, landscape.width)
     let portraitRows = floord(container.height, portrait.height)
     let portraitColumns = floord(container.width, portrait.width)
-    let numIfLandscape =  landscapeRows * landscapeColumns
+    let numIfLandscape =  landscapeRows * landscapeaColumns
     let numIfPortrait =  portraitRows * portraitColumns
 
     if(numIfLandscape > numIfPortrait){
         for(let y = 0; y<landscapeRows;y++){
             for(let x = 0; x<landscapeColumns; x++){
                 boxes.push({x:(landscape.width*x) + (spacing*x) + offset,y:(landscape.height*y) + (spacing*y) + offset,...landscape})
-            }
+        }
         }
     } else {
         for(let y = 0; y<portraitRows;y++){
@@ -44,3 +54,25 @@ function pack(box, container, options = {}){
 
     return boxes
 }
+
+let options = {
+    page: {
+        width: 8.5,
+        height: 11
+    },
+    fill: 'cover',
+    width: 5,
+    height: 7,
+    bleed: {
+        value: 0,
+        type: 'inset'
+    },
+    marks: true,
+    margin: 0.25,
+    spacing: 0,
+    pack: 'linear',
+    dpi: 600,
+    originals: [sampleImage2, sampleImage1]
+}
+
+console.log(format(options))

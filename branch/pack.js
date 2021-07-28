@@ -25,7 +25,7 @@ function pack(box, container, options = {}){
     let landscapeColumns = floord(container.width, landscape.width)
     let portraitRows = floord(container.height, portrait.height)
     let portraitColumns = floord(container.width, portrait.width)
-    let numIfLandscape =  landscapeRows * landscapeColumns
+    let numIfLandscape =  landscapeRows * landscapeaColumns
     let numIfPortrait =  portraitRows * portraitColumns
 
     if(numIfLandscape > numIfPortrait){
