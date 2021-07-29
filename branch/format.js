@@ -1,4 +1,7 @@
-function format({margin, width, height, page, spacing, bleed, dpi}){
+async function format({margin, width, height, page, spacing, bleed, originals, dpi, numberOfEach}){
+    let start = new Date().getTime()
+    let images = await loadImages(originals)
+
     margin = margin*72
     width = width*72
     height = height*72
@@ -15,7 +18,6 @@ function format({margin, width, height, page, spacing, bleed, dpi}){
     let output = []
 
     let margin2 = margin*2
-    let bleed2 = bleed.value*2
     let marginBox = {
         width: page.width - margin2,
         height: page.height - margin2
@@ -30,172 +32,174 @@ function format({margin, width, height, page, spacing, bleed, dpi}){
         spacing: spacing,
         offset: margin
     })
-    boxes.forEach(box=>{
-        let offset = {
-            x: box.x + ((marginBox.width - using.width) / 2),
-            y: box.y + ((marginBox.height - using.height) / 2)
+
+    let pages = []
+    let processed = []
+    for(let t = 0 ; t < images.length; t++){
+        let image = images[t]
+        if(t >= pages.length){
+            pages.push([])
         }
-        output.push({
-            ...box,
-            x: offset.x,
-            y: offset.y,
-            data: null,
-            type: "content"
-        })
-        if(bleed.value !== 0){
-            let insideBleed = Math.min(spacing/2, bleed.value)
+        let usingDpi = Math.min(Math.min(image.width, image.height) / (Math.max(width, height) / 72), dpi)
+        let compressed = await cover(image.src, {width:boxes[t % boxes.length].width / 72 * usingDpi,height:boxes[t % boxes.length].height / 72 * usingDpi})
+        pages[pages.length-1].push(compressed)
+        processed.push(compressed)
+    }
 
-            let left = box.x - margin == 0
-            let top = box.y - margin == 0
-            let right = box.x + box.width - margin == using.width
-            let bottom = box.y + box.height == using.height + margin
-            let leftBleed = left ? bleed.value : insideBleed
-            let topBleed = top ? bleed.value : insideBleed
-            let rightBleed = right ? bleed.value : insideBleed
-            let bottomBleed = bottom ? bleed.value : insideBleed
-            output.push({
-                x: offset.x - leftBleed,
-                y: offset.y,
-                width: leftBleed,
-                height: box.height,
-                data: null,
-                type: "left"
-            })
-            output.push({
-                x: offset.x + box.width,
-                y: offset.y,
-                width: rightBleed,
-                height: box.height,
-                data: null,
-                type: "right"
-            })
-            output.push({
+    let outputImages = {}
+    for(let t = 0, total = 0, page = 0; t < processed.length; t++){
+        for(let i = 0; i < (numberOfEach===false?boxes.length:numberOfEach); i++, total++){
+            let page = Math.floor(total / boxes.length)
+            let box = boxes[total % boxes.length]
+            if(!pages[page]) pages[page] = []
+            let offset = {
+                x: box.x + ((marginBox.width - using.width) / 2),
+                y: box.y + ((marginBox.height - using.height) / 2)
+            }
+            if(!outputImages[`content${t}`]) {
+                outputImages[`content${t}`] = processed[t]
+            }
+            pages[page].push({
+                ...box,
                 x: offset.x,
-                y: offset.y - topBleed,
-                width: box.width,
-                height: topBleed,
-                data: null,
-                type: "top"
-            })
-            output.push({
-                x: offset.x,
-                y: offset.y + box.height,
-                width: box.width,
-                height: bottomBleed,
-                data: null,
-                type: "bottom"
-            })
-            output.push({
-                x: offset.x - leftBleed,
-                y: offset.y - topBleed,
-                width: leftBleed,
-                height: topBleed,
-                data: null,
-                type: "topleft"
-            })
-            output.push({
-                x: offset.x + box.width,
-                y: offset.y - topBleed,
-                width: rightBleed,
-                height: topBleed,
-                data: null,
-                type: "topright"
-            })
-            output.push({
-                x: offset.x - leftBleed,
-                y: offset.y + box.height,
-                width: leftBleed,
-                height: bottomBleed,
-                data: null,
-                type: "bottomleft"
-            })
-            output.push({
-                x: offset.x + box.width,
-                y: offset.y + box.height,
-                width: rightBleed,
-                height: bottomBleed,
-                data: null,
-                type: "bottomright"
+                y: offset.y,
+                data: `content${t}`,
+                type: "content"
             })
 
-            if(left) {
-                output.push({
-                    x: offset.x - leftBleed - cropmark.offset - cropmark.length,
-                    y: offset.y,
-                    width: cropmark.length,
-                    height: cropmark.width,
-                    data: null,
-                    type: "mark"
-                })
-                output.push({
-                    x: offset.x - leftBleed - cropmark.offset - cropmark.length,
-                    y: offset.y + box.height,
-                    width: cropmark.length,
-                    height: cropmark.width,
-                    data: null,
-                    type: "mark"
-                })
-            }
-            if(top) {
-                output.push({
-                    x: offset.x,
-                    y: offset.y - topBleed - cropmark.offset - cropmark.length,
-                    width: cropmark.width,
-                    height: cropmark.length,
-                    data: null,
-                    type: "mark"
-                })
-                output.push({
-                    x: offset.x + box.width,
-                    y: offset.y - topBleed - cropmark.offset - cropmark.length,
-                    width: cropmark.width,
-                    height: cropmark.length,
-                    data: null,
-                    type: "mark"
-                })
-            }
-            if(right) {
-                output.push({
-                    x: offset.x + box.width + rightBleed + cropmark.offset,
-                    y: offset.y,
-                    width: cropmark.length,
-                    height: cropmark.width,
-                    data: null,
-                    type: "mark"
-                })
-                output.push({
-                    x: offset.x + box.width + rightBleed + cropmark.offset,
-                    y: offset.y + box.height,
-                    width: cropmark.length,
-                    height: cropmark.width,
-                    data: null,
-                    type: "mark"
-                })
-            }
-            if(bottom) {
-                output.push({
-                    x: offset.x,
-                    y: offset.y + box.height + bottomBleed + cropmark.offset,
-                    width: cropmark.width,
-                    height: cropmark.length,
-                    data: null,
-                    type: "mark"
-                })
-                output.push({
-                    x: offset.x + box.width,
-                    y: offset.y + box.height + bottomBleed + cropmark.offset,
-                    width: cropmark.width,
-                    height: cropmark.length,
-                    data: null,
-                    type: "mark"
-                })
-            }
-        }    
-    })
+            if(bleed.value !== 0){
+                let insideBleed = Math.min(spacing/2, bleed.value)
 
-    return output
+                let bleeds = {}
+                let left = box.x - margin == 0
+                let top = box.y - margin == 0
+                let right = box.x + box.width - margin == using.width
+                let bottom = box.y + box.height == using.height + margin
+                bleeds.left = left ? bleed.value : insideBleed
+                bleeds.top = top ? bleed.value : insideBleed
+                bleeds.right = right ? bleed.value : insideBleed
+                bleeds.bottom = bottom ? bleed.value : insideBleed
+
+                let keys = ['top','left','right','bottom','topleft', 'topright', 'bottomleft', 'bottomright']
+                for(let k = 0; k < keys.length; k++){
+                    let key = keys[k]
+                    let leftright = key.includes('left') || key.includes('right')
+                    let topbottom = key.includes('top') || key.includes('bottom')
+                    let x = offset.x + (topbottom ? 0 : key.includes('left')? -bleeds[key]:box.width)
+                    let y = offset.y + (leftright ? 0 : key.includes('top')? -bleeds[key]:box.height)
+                    let width = key.includes('left') ? bleeds['left'] : key.includes('right') ? bleeds['right'] : box.width
+                    let height = key.includes('top') ? bleeds['top'] : key.includes('bottom') ? bleeds['bottom'] : box.height
+                    if(key=='topleft') {x -= bleeds['left']; y -= bleeds['top']}
+                    if(key=='bottomleft') {x -= bleeds['left']; y += box.height}
+                    if(key=='topright') {x += box.width; y-=bleeds['top']}
+                    if(key=='bottomright') {x += box.width; y += box.height}
+
+                    let label = `${t}${key}${width}${height}`
+                    if(!outputImages[label]) {
+                        outputImages[label] = await mirrorBleed(outputImages[`content${t}`], {width, height}, key)
+                    }
+
+                    pages[page].push({
+                        x,
+                        y,
+                        width,
+                        height,
+                        data: label,
+                        type: key
+                    })
+                }
+                if(left) {
+                    pages[page].push({
+                        x: offset.x - bleeds.left - cropmark.offset - cropmark.length,
+                        y: offset.y,
+                        width: cropmark.length,
+                        height: cropmark.width,
+                        data: null,
+                        type: "mark"
+                    })
+                    pages[page].push({
+                        x: offset.x - bleeds.left - cropmark.offset - cropmark.length,
+                        y: offset.y + box.height,
+                        width: cropmark.length,
+                        height: cropmark.width,
+                        data: null,
+                        type: "mark"
+                    })
+                }
+                if(top) {
+                    pages[page].push({
+                        x: offset.x,
+                        y: offset.y - bleeds.top - cropmark.offset - cropmark.length,
+                        width: cropmark.width,
+                        height: cropmark.length,
+                        data: null,
+                        type: "mark"
+                    })
+                    pages[page].push({
+                        x: offset.x + box.width,
+                        y: offset.y - bleeds.top - cropmark.offset - cropmark.length,
+                        width: cropmark.width,
+                        height: cropmark.length,
+                        data: null,
+                        type: "mark"
+                    })
+                }
+                if(right) {
+                    pages[page].push({
+                        x: offset.x + box.width + bleeds.right + cropmark.offset,
+                        y: offset.y,
+                        width: cropmark.length,
+                        height: cropmark.width,
+                        data: null,
+                        type: "mark"
+                    })
+                    pages[page].push({
+                        x: offset.x + box.width + bleeds.right + cropmark.offset,
+                        y: offset.y + box.height,
+                        width: cropmark.length,
+                        height: cropmark.width,
+                        data: null,
+                        type: "mark"
+                    })
+                }
+                if(bottom) {
+                    pages[page].push({
+                        x: offset.x,
+                        y: offset.y + box.height + bleeds.bottom + cropmark.offset,
+                        width: cropmark.width,
+                        height: cropmark.length,
+                        data: null,
+                        type: "mark"
+                    })
+                    pages[page].push({
+                        x: offset.x + box.width,
+                        y: offset.y + box.height + bleeds.bottom + cropmark.offset,
+                        width: cropmark.width,
+                        height: cropmark.length,
+                        data: null,
+                        type: "mark"
+                    })
+                }
+            }  
+        }
+    }
+    return {output: pages, images: outputImages}
 }
 
+async function loadImages(datas) {
+    return new Promise(resolve => {
+        let result = [],
+        count  = datas.length,
+        onload = function() { if (--count == 0) resolve(result); };
+        
+        for(let i = 0 ; i < datas.length ; i++) {
+            let data = datas[i];
+            result[i] = document.createElement('img');
+            result[i].addEventListener('load', onload);
+            result[i].src = data;
+        }  
+    })
+}
 function pack(box, container, options = {}){
     let spacing = options.spacing || 0
     let offset = options.offset || 0
@@ -231,6 +235,7 @@ function pack(box, container, options = {}){
         for(let y = 0; y<landscapeRows;y++){
             for(let x = 0; x<landscapeColumns; x++){
                 let box = {x:(landscape.width*x) + (spacing*x) + offset,y:(landscape.height*y) + (spacing*y) + offset,...landscape}
+                box.orientation = box.width > box.height ? 'landscape' : 'portrait'
                 boxes.push(box)
                 if(box.x < using.x) using.x = box.x
                 if(box.y < using.y) using.y = box.y
@@ -242,6 +247,7 @@ function pack(box, container, options = {}){
         for(let y = 0; y<portraitRows;y++){
             for(let x = 0; x<portraitColumns; x++){
                 let box = {x:(portrait.width*x) + (spacing*x) + offset,y:(portrait.height*y) + (spacing*y) + offset,...portrait}
+                box.orientation = box.width > box.height ? 'landscape' : 'portrait'
                 boxes.push(box)
                 if(box.x < using.x) using.x = box.x
                 if(box.y < using.y) using.y = box.y
@@ -253,7 +259,68 @@ function pack(box, container, options = {}){
 
     return {using, boxes}
 }
-
+async function mirrorBleed(data, box, position){
+    let canvas = document.createElement('canvas')
+    canvas.width = box.width
+    canvas.height = box.height
+    let context = canvas.getContext('2d')
+    return new Promise((resolve, reject)=>{
+        let image = new Image()
+        image.onload = ()=>{
+            let scale = Math.max(image.width,image.height) / Math.max(box.height,box.width)
+            let scaledHeight = box.height * scale
+            let scaledWidth = box.width * scale
+        
+            context.save()
+            switch(position){
+                case('top'):{
+                    context.scale(1,-1)
+                    context.drawImage(image,0,0,image.width,scaledHeight,0, 0,canvas.width,-canvas.height)
+                    break;
+                }
+                case('left'):{
+                    context.scale(-1,1)
+                    context.drawImage(image,0,0,scaledWidth,image.height,0, 0,-canvas.width,canvas.height)
+                    break;
+                }
+                case('bottom'):{
+                    context.scale(1,-1)
+                    context.drawImage(image,0,image.height-scaledHeight,image.width,scaledHeight,0,0,canvas.width,-canvas.height)
+                }
+                case('right'):{
+                    context.scale(-1,1)
+                    context.drawImage(image,image.width-scaledWidth,0,scaledWidth,image.height,0, 0,-canvas.width,canvas.height)
+                    break;
+                }
+                case('topleft'):{
+                    console.log(canvas.width, canvas.height)
+                    context.scale(-1,-1)
+                    context.drawImage(image,image.width - scaledWidth,image.height - scaledHeight,scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
+                    break;
+                }
+                // case('topright'):{
+                //     console.log(image.width / scale,image.height / scale)
+                //     context.scale(-1,-1)
+                //     context.drawImage(image,image.width-(scaledWidth),0,scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
+                //     break;
+                // }
+                // case('bottomleft'):{
+                //     context.scale(-1,-1)
+                //     context.drawImage(image,0,image.height-(scaledHeight),scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
+                // }
+                // case('bottomright'):{
+                //     let scaledWidth = box.width / scale
+                //     let scaledHeight = box.height * scale
+                //     context.scale(-1,-1)
+                //     context.drawImage(image,image.width-(scaledWidth),image.height-(scaledHeight),scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
+                // }
+            }
+            context.restore()
+            resolve(canvas.toDataURL())
+        }
+        image.src = data
+    })
+}
 async function cover(data, output = {}){
     output.normalAspectRatio = Math.max(output.width, output.height) / Math.min(output.width,output.height)
     output.aspectRatio = output.width / output.height
@@ -294,9 +361,9 @@ async function cover(data, output = {}){
                 crop.x = (image.width - (image.height / output.normalAspectRatio)) / 2
                 crop.y = 0
                 crop.width = image.height / output.normalAspectRatio
-                crop.height = image.height
+            crop.height = image.height
             }
-    
+            
             if(image.aspectRatio >= 1 && output.aspectRatio >= 1 || image.aspectRatio <= 1 && output.aspectRatio <= 1){
                 context.drawImage(image,crop.x,crop.y,crop.width,crop.height,0,0,canvas.width,canvas.height)
             } else {
@@ -310,7 +377,6 @@ async function cover(data, output = {}){
     })
     return promise
 }
-
 let options = {
     page: {
         width: 8.5,
@@ -318,38 +384,48 @@ let options = {
     },
     fill: 'cover',
     width: 1,
-    height: 1.5,
+    height: 1,
     bleed: {
-        value: .125,
+        value: 1,
         type: 'inset'
     },
     marks: true,
-    margin: 0.5,
-    spacing: .5,
+    margin: 0.25,
+    spacing: .25,
     pack: 'linear',
-    dpi: 300,
-    originals: [sampleImage1, sampleImage2]
+    dpi: 100,
+    originals: [sampleImage1, sampleImage2],
+    numberOfEach: false
 }
 
-let output = format(options)
-let canvas = document.getElementById('tester')
-canvas.width = options.page.width
-canvas.height = options.page.height
-let ctx = canvas.getContext('2d')
-
-ctx.fillStyle = 'white'
-ctx.fillRect(0,0,canvas.width,canvas.height)
-
-output.forEach(box => {
-    if(box.type == 'content') ctx.fillStyle = 'grey'
-    if(box.type == 'left') ctx.fillStyle = "red"
-    if(box.type == 'top') ctx.fillStyle = 'blue'
-    if(box.type == 'bottom') ctx.fillStyle = 'green'
-    if(box.type == 'right') ctx.fillStyle = 'purple'
-    if(box.type == 'topleft') ctx.fillStyle = 'orange'
-    if(box.type == 'topright') ctx.fillStyle = 'black'
-    if(box.type == 'bottomleft') ctx.fillStyle = 'pink'
-    if(box.type == 'bottomright') ctx.fillStyle = 'brown'
-    if(box.type == 'mark') ctx.fillStyle = 'black'
-    ctx.fillRect(box.x,box.y,box.width,box.height)
-});
+format(options).then(({output, images})=>{
+    let canvas = document.getElementById('tester')
+    canvas.width = options.page.width
+    canvas.height = options.page.height
+    let ctx = canvas.getContext('2d')
+    
+    ctx.fillStyle = 'white'
+    ctx.fillRect(0,0,canvas.width,canvas.height)
+    let page = output[0]
+    // output.forEach(page => {
+        page.forEach(item => {
+            if(item.type == 'content') ctx.fillStyle = 'grey'
+            if(item.type == 'left') ctx.fillStyle = "red"
+            if(item.type == 'top') ctx.fillStyle = 'blue'
+            if(item.type == 'bottom') ctx.fillStyle = 'green'
+            if(item.type == 'right') ctx.fillStyle = 'purple'
+            if(item.type == 'topleft') ctx.fillStyle = 'orange'
+            if(item.type == 'topright') ctx.fillStyle = 'black'
+            if(item.type == 'bottomleft') ctx.fillStyle = 'pink'
+            if(item.type == 'bottomright') ctx.fillStyle = 'brown'
+            if(item.type == 'mark') ctx.fillStyle = 'black'
+            if(item.data != null){
+                let image = new Image()
+                image.onload = ()=>ctx.drawImage(image, item.x, item.y, item.width, item.height)
+            image.src = images[item.data]
+            } else {
+                ctx.fillRect(item.x,item.y,item.width,item.height)
+            }  
+        })
+    // });
+})
