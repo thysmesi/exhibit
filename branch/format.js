@@ -1,4 +1,4 @@
-function format({margin, width, height, page, spacing, bleed}){
+function format({margin, width, height, page, spacing, bleed, dpi}){
     margin = margin*72
     width = width*72
     height = height*72
@@ -254,6 +254,63 @@ function pack(box, container, options = {}){
     return {using, boxes}
 }
 
+async function cover(data, output = {}){
+    output.normalAspectRatio = Math.max(output.width, output.height) / Math.min(output.width,output.height)
+    output.aspectRatio = output.width / output.height
+    let wd2 = output.width/2
+    let hd2 = output.height/2
+
+    var promise = new Promise((resolve)=>{
+        var image = new Image(); 
+        image.onload = function(){
+            image.normalAspectRatio = Math.max(image.width, image.height) / Math.min(image.width,image.height)
+            image.aspectRatio = image.width / image.height
+    
+            let canvas = document.createElement('canvas')
+            canvas.width = output.width
+            canvas.height = output.height
+            let context = canvas.getContext('2d')
+            let crop = {}
+    
+            if(output.normalAspectRatio < image.normalAspectRatio && image.width > image.height){
+                crop.x = (image.width - (image.height * output.normalAspectRatio)) / 2
+                crop.y = 0
+                crop.width = image.height * output.normalAspectRatio
+                crop.height = image.height
+            }
+            if(output.normalAspectRatio < image.normalAspectRatio && image.width < image.height) {
+                crop.x = 0
+                crop.y = (image.height - (image.width * output.normalAspectRatio)) / 2
+                crop.width = image.width
+                crop.height = image.width * output.normalAspectRatio
+            }
+            if(output.normalAspectRatio > image.normalAspectRatio && image.width > image.height) {
+                crop.x = 0
+                crop.y = (image.height - (image.width / output.normalAspectRatio)) / 2
+                crop.width = image.width
+                crop.height = image.width / output.normalAspectRatio
+            }
+            if(output.normalAspectRatio > image.normalAspectRatio && image.width < image.height) {
+                crop.x = (image.width - (image.height / output.normalAspectRatio)) / 2
+                crop.y = 0
+                crop.width = image.height / output.normalAspectRatio
+                crop.height = image.height
+            }
+    
+            if(image.aspectRatio >= 1 && output.aspectRatio >= 1 || image.aspectRatio <= 1 && output.aspectRatio <= 1){
+                context.drawImage(image,crop.x,crop.y,crop.width,crop.height,0,0,canvas.width,canvas.height)
+            } else {
+                context.translate(wd2,hd2)
+                context.rotate(Math.PI / 2)
+                context.drawImage(image,crop.x,crop.y,crop.width,crop.height,-hd2,-wd2,canvas.height,canvas.width)
+            }
+            resolve(canvas.toDataURL())
+        }
+        image.src = data; 
+    })
+    return promise
+}
+
 let options = {
     page: {
         width: 8.5,
@@ -271,7 +328,7 @@ let options = {
     spacing: .5,
     pack: 'linear',
     dpi: 300,
-    originals: []
+    originals: [sampleImage1, sampleImage2]
 }
 
 let output = format(options)
