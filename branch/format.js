@@ -1,5 +1,4 @@
-async function format({margin, width, height, page, spacing, bleed, originals, dpi, numberOfEach}){
-    let start = new Date().getTime()
+async function format({margin, width, height, page, fill, spacing, bleed, originals, dpi, marks, numberOfEach}){
     let images = await loadImages(originals)
 
     margin = margin*72
@@ -15,8 +14,8 @@ async function format({margin, width, height, page, spacing, bleed, originals, d
         width: 1,
         offset: .0675 * 72
     }
-    let output = []
 
+    let bleed2 = bleed.value*2
     let margin2 = margin*2
     let marginBox = {
         width: page.width - margin2,
@@ -40,8 +39,15 @@ async function format({margin, width, height, page, spacing, bleed, originals, d
         if(t >= pages.length){
             pages.push([])
         }
-        let usingDpi = Math.min(Math.min(image.width, image.height) / (Math.max(width, height) / 72), dpi)
-        let compressed = await cover(image.src, {width:boxes[t % boxes.length].width / 72 * usingDpi,height:boxes[t % boxes.length].height / 72 * usingDpi})
+        let usingDpi, compressed
+        if(bleed.type != 'inset') {
+            usingDpi = Math.min(Math.min(image.width, image.height) / (Math.max(width, height) / 72), dpi)
+            if(fill === "cover") compressed = await cover(image.src, {width:boxes[t % boxes.length].width / 72 * usingDpi,height:boxes[t % boxes.length].height / 72 * usingDpi})
+            else compressed = await fit(image.src, {width:boxes[t % boxes.length].width / 72 * usingDpi,height:boxes[t % boxes.length].height / 72 * usingDpi})
+        } else {
+            usingDpi = Math.min(Math.min(image.width, image.height) / (Math.max(width + bleed2, height + bleed2) / 72), dpi)
+            compressed = await cover(image.src, {width:(boxes[t % boxes.length].width + bleed2) / 72 * usingDpi,height:(boxes[t % boxes.length].height + bleed2) / 72 * usingDpi})
+        }
         pages[pages.length-1].push(compressed)
         processed.push(compressed)
     }
@@ -59,27 +65,38 @@ async function format({margin, width, height, page, spacing, bleed, originals, d
             if(!outputImages[`content${t}`]) {
                 outputImages[`content${t}`] = processed[t]
             }
-            pages[page].push({
-                ...box,
-                x: offset.x,
-                y: offset.y,
-                data: `content${t}`,
-                type: "content"
-            })
+            if(bleed.type != 'inset') {
+                pages[page].push({
+                    ...box,
+                    x: offset.x,
+                    y: offset.y,
+                    data: `content${t}`,
+                    type: "content"
+                })
+            } else {
+                pages[page].push({
+                    width: box.width + bleed2,
+                    height: box.height + bleed2,
+                    x: offset.x - bleed.value,
+                    y: offset.y - bleed.value,
+                    data: `content${t}`,
+                    type: "content"
+                })
+            }
 
-            if(bleed.value !== 0){
-                let insideBleed = Math.min(spacing/2, bleed.value)
+            let insideBleed = Math.min(spacing/2, bleed.value)
 
-                let bleeds = {}
-                let left = box.x - margin == 0
-                let top = box.y - margin == 0
-                let right = box.x + box.width - margin == using.width
-                let bottom = box.y + box.height == using.height + margin
-                bleeds.left = left ? bleed.value : insideBleed
-                bleeds.top = top ? bleed.value : insideBleed
-                bleeds.right = right ? bleed.value : insideBleed
-                bleeds.bottom = bottom ? bleed.value : insideBleed
+            let bleeds = {}
+            let left = box.x - margin == 0
+            let top = box.y - margin == 0
+            let right = box.x + box.width - margin == using.width
+            let bottom = box.y + box.height == using.height + margin
+            bleeds.left = left ? bleed.value : insideBleed
+            bleeds.top = top ? bleed.value : insideBleed
+            bleeds.right = right ? bleed.value : insideBleed
+            bleeds.bottom = bottom ? bleed.value : insideBleed
 
+            if(bleed.value > 0 && bleed.type != 'inset'){
                 let keys = ['top','left','right','bottom','topleft', 'topright', 'bottomleft', 'bottomright']
                 for(let k = 0; k < keys.length; k++){
                     let key = keys[k]
@@ -96,7 +113,8 @@ async function format({margin, width, height, page, spacing, bleed, originals, d
 
                     let label = `${t}${key}${width}${height}`
                     if(!outputImages[label]) {
-                        outputImages[label] = await mirrorBleed(outputImages[`content${t}`], {width, height}, key)
+                        if(bleed.type === "edge") outputImages[label] = await edgeBleed(outputImages[`content${t}`], {width, height}, key)
+                        if(bleed.type === "mirror") outputImages[label] = await mirrorBleed(outputImages[`content${t}`], {width, height}, key)
                     }
 
                     pages[page].push({
@@ -108,6 +126,8 @@ async function format({margin, width, height, page, spacing, bleed, originals, d
                         type: key
                     })
                 }
+            }
+            if(marks){
                 if(left) {
                     pages[page].push({
                         x: offset.x - bleeds.left - cropmark.offset - cropmark.length,
@@ -180,7 +200,7 @@ async function format({margin, width, height, page, spacing, bleed, originals, d
                         type: "mark"
                     })
                 }
-            }  
+            }
         }
     }
     return {output: pages, images: outputImages}
@@ -267,10 +287,15 @@ async function mirrorBleed(data, box, position){
     return new Promise((resolve, reject)=>{
         let image = new Image()
         image.onload = ()=>{
-            let scale = Math.max(image.width,image.height) / Math.max(box.height,box.width)
-            let scaledHeight = box.height * scale
-            let scaledWidth = box.width * scale
-        
+            let scale = Math.min(image.height, image.width) / 72
+            let scaledHeight, scaledWidth
+            if(scale >1) {
+                scaledHeight = box.height / scale
+                scaledWidth = box.width / scale    
+            } else {
+                scaledHeight = box.height * scale
+                scaledWidth = box.width * scale    
+            }
             context.save()
             switch(position){
                 case('top'):{
@@ -293,28 +318,84 @@ async function mirrorBleed(data, box, position){
                     break;
                 }
                 case('topleft'):{
-                    console.log(canvas.width, canvas.height)
                     context.scale(-1,-1)
-                    context.drawImage(image,image.width - scaledWidth,image.height - scaledHeight,scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
+                    context.drawImage(image,0,0,scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
                     break;
                 }
-                // case('topright'):{
-                //     console.log(image.width / scale,image.height / scale)
-                //     context.scale(-1,-1)
-                //     context.drawImage(image,image.width-(scaledWidth),0,scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
-                //     break;
-                // }
-                // case('bottomleft'):{
-                //     context.scale(-1,-1)
-                //     context.drawImage(image,0,image.height-(scaledHeight),scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
-                // }
-                // case('bottomright'):{
-                //     let scaledWidth = box.width / scale
-                //     let scaledHeight = box.height * scale
-                //     context.scale(-1,-1)
-                //     context.drawImage(image,image.width-(scaledWidth),image.height-(scaledHeight),scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
-                // }
+                case('topright'):{
+                    context.scale(-1,-1)
+                    context.drawImage(image,image.width - scaledWidth,0,scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
+                    break;
+                }
+                case('bottomleft'):{
+                    context.scale(-1,-1)
+                    context.drawImage(image,0,image.height-scaledHeight,scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
+                    break;
+                }
+                case('bottomright'):{
+                    context.scale(-1,-1)
+                    context.drawImage(image,image.width - scaledWidth,image.height-scaledHeight,scaledWidth,scaledHeight,0, 0,-canvas.width,-canvas.height)
+                    break;
+                }
             }
+            context.restore()
+            resolve(canvas.toDataURL())
+        }
+        image.src = data
+    })
+}
+async function edgeBleed(data, box, position, smoothing = 2){
+    let canvas = document.createElement('canvas')
+    canvas.width = box.width
+    canvas.height = box.height
+    let context = canvas.getContext('2d')
+    return new Promise((resolve, reject)=>{
+        let image = new Image()
+        image.onload = ()=>{
+            let scale = Math.min(image.height, image.width) / 72
+            context.save()
+            switch(position){
+                case('top'):{
+                    context.scale(1,-1)
+                    context.drawImage(image,0,0,image.width,smoothing,0, 0,canvas.width,-canvas.height)
+                    break;
+                }
+                case('left'):{
+                    context.scale(-1,1)
+                    context.drawImage(image,0,0,smoothing,image.height,0, 0,-canvas.width,canvas.height)
+                    break;
+                }
+                case('bottom'):{
+                    context.scale(1,-1)
+                    context.drawImage(image,0,image.height-smoothing,image.width,smoothing,0,0,canvas.width,-canvas.height)
+                }
+                case('right'):{
+                    context.scale(-1,1)
+                    context.drawImage(image,image.width-smoothing,0,smoothing,image.height,0, 0,-canvas.width,canvas.height)
+                    break;
+                }
+                case('topleft'):{
+                    context.scale(-1,-1)
+                    context.drawImage(image,0,0,smoothing,smoothing,0, 0,-canvas.width,-canvas.height)
+                    break;
+                }
+                case('topright'):{
+                    context.scale(-1,-1)
+                    context.drawImage(image,image.width - smoothing,0,smoothing,smoothing,0, 0,-canvas.width,-canvas.height)
+                    break;
+                }
+                case('bottomleft'):{
+                    context.scale(-1,-1)
+                    context.drawImage(image,0,image.height-smoothing,smoothing,smoothing,0, 0,-canvas.width,-canvas.height)
+                    break;
+                }
+                case('bottomright'):{
+                    context.scale(-1,-1)
+                    context.drawImage(image,image.width - smoothing,image.height-smoothing,smoothing,smoothing,0, 0,-canvas.width,-canvas.height)
+                    break;
+                }
+            }
+
             context.restore()
             resolve(canvas.toDataURL())
         }
@@ -377,27 +458,76 @@ async function cover(data, output = {}){
     })
     return promise
 }
+async function fit(data, output = {}){
+    output.normalAspectRatio = Math.max(output.width, output.height) / Math.min(output.width,output.height)
+    output.aspectRatio = output.width / output.height
+
+    var promise = new Promise((resolve)=>{
+        var image = new Image(); 
+        image.onload = function(){
+            image.normalAspectRatio = Math.max(image.width, image.height) / Math.min(image.width,image.height)
+            image.aspectRatio = image.width / image.height
+
+            let canvas = document.createElement('canvas')
+            let context = canvas.getContext('2d')
+
+            canvas.width = output.width
+            canvas.height = output.height
+        
+            if(image.aspectRatio >= 1 && output.aspectRatio >= 1 || image.aspectRatio <= 1 && output.aspectRatio <= 1){   
+                var hRatio = output.width / image.width
+                var vRatio = output.height / image.height    
+                var ratio  = Math.min ( hRatio, vRatio)
+
+                let vOffset = (output.width - (image.width*ratio))/ 2
+                let hOffset = (output.height - (image.height*ratio))/ 2
+ 
+                canvas.width = image.width*ratio
+                canvas.height = image.height*ratio
+                console.log(canvas.width, canvas.height)
+                console.log(image.width*ratio, image.height*ratio)
+
+                context.drawImage(image, 0+vOffset/2 ,0+hOffset/2,image.width*ratio - vOffset, image.height*ratio - hOffset)
+            } else {
+                var hRatio = output.width / image.height
+                var vRatio = output.height / image.width    
+                var ratio  = Math.min ( hRatio, vRatio)
+
+                let vOffset = (output.width - (image.height*ratio))/ 2
+                let hOffset = (output.height - (image.width*ratio))/ 2
+
+                let wd2 = canvas.width/2
+                let hd2 = canvas.height/2
+                context.translate(wd2,hd2)
+                context.rotate(Math.PI / 2)
+                context.drawImage(image, -hd2 + hOffset,-wd2 + vOffset, image.width*ratio, image.height*ratio)
+            }
+            resolve(canvas.toDataURL())
+        }
+        image.src = data;
+    })
+    return promise
+}
 let options = {
     page: {
         width: 8.5,
         height: 11
     },
     fill: 'cover',
-    width: 1,
-    height: 1,
+    width: 8.5,
+    height: 5.5,
     bleed: {
-        value: 1,
-        type: 'inset'
+        value: .125,
+        type: 'mirror'
     },
     marks: true,
-    margin: 0.25,
-    spacing: .25,
+    margin: 0,
+    spacing: 0,
     pack: 'linear',
-    dpi: 100,
+    dpi: 50,
     originals: [sampleImage1, sampleImage2],
-    numberOfEach: false
+    numberOfEach: 1
 }
-
 format(options).then(({output, images})=>{
     let canvas = document.getElementById('tester')
     canvas.width = options.page.width
