@@ -12,13 +12,33 @@ html, body {
 	padding: 0px;
 	margin: 0px;
 }
-
+/* width */
+::-webkit-scrollbar {
+	width: 7px;
+}
+  
+/* Track */
+::-webkit-scrollbar-track {
+	background: rgba(0, 0, 0, 0);
+}
+  
+/* Handle */
+::-webkit-scrollbar-thumb {
+	cursor: pointer;
+	background: #888;
+}
+  
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+	background: #555;
+}
 body {
 	box-sizing: border-box;
 	font-family: 'Montserrat', sans-serif;
 	background-color: var(--base-color);
 	color: var(--content-color);
 	overflow: hidden;
+	display: flex;
 }
 
 a {

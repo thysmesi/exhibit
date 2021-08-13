@@ -36,6 +36,7 @@
 		width: 100vw;
 		height: 100vh;
         background-color: rgba(0, 0, 0, .6);
+        cursor: wait;
     }
     .alert-body {
         width: 350px;
@@ -46,6 +47,7 @@
         background-color: #ececec;
         border: 1px solid #ebebeb;
         border-radius: 8px;
+        cursor: wait;
     }
     .alert-close {
         padding: 4px 7px;
