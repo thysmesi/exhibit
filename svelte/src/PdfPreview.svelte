@@ -5,9 +5,8 @@
     export let options
 
     let canvas
+    let scale = 1
     function handleResize(){
-        // let style = window.getComputedStyle(canvas.parentNode)
-
         let container = {
             width: window.innerWidth-700,//parseFloat(style.width) - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
             height: window.innerHeight-100//parseFloat(style.height) - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
@@ -37,18 +36,23 @@
         context.fillStyle = 'white'
         context.fillRect(0,0,canvas.width,canvas.height)
     }
-    onMount(handleResize)
+    afterUpdate(handleResize)
     afterUpdate(async ()=>{
         let context = canvas.getContext('2d')
         let output = await format({...options, originals: options.originals.map(original=>original.low), dpi: 50})
-        let images = []
+        let images = {}
         for(let key in output.images) {
-            images.push(await loadImage(output.images[key]))
+            images[key] = await loadImage(output.images[key])
         }
-        // let images = output.images.map(async (url)=>{
-        //     return loadImage(url)
-        // })
-        console.log(images)
+        let page = output.output[0]
+        let scale = (options.page.width * 72) / canvas.width
+        page.forEach(item => {
+            if(item.data != null) {
+                console.log(scale)
+                context.drawImage(images[item.data], item.x / scale, item.y / scale, item.width / scale, item.height / scale)
+
+            }
+        })
     })
 </script>
 <svelte:window on:resize={handleResize}/>

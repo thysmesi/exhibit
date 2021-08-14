@@ -41,14 +41,17 @@
         let decimal = event.target.value.indexOf('.')
                 
         let length = event.target.value.length
+
         if(negative && length > 1) {
-            if(min) parsed = Math.max(min, parsed)
-            if(max) parsed = Math.min(max, parsed)
-            
             event.target.value = isNaN(parsed) ? '' : parsed
-            console.log(event.target.value.substring(0, decimal))
-            if(decimal) event.target.value = event.target.value.substring(0, decimal) + '.'// + event.target.value.substring(decimal)
+            if(decimal != -1) event.target.value = event.target.value.substring(0, decimal) + '.'// + event.target.value.substring(decimal)
         }
+
+        parsed = parseFloat(event.target.value)
+
+        if(!isNaN(min) === true && parsed < min) event.target.value = textValue
+        if(!isNaN(max) && parsed > max) event.target.value = textValue
+
 
         value = isNaN(parsed) ? 0 : parsed
     }

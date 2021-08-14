@@ -1,6 +1,7 @@
-export async function format({margin, width, height, page, fill, spacing, bleed, originals, dpi, marks, numberOfEach}){
-    let images = await loadImages(originals)
+export async function format(options){
+    let {margin, width, height, page, fill, spacing, bleed, originals, dpi, marks, numberOfEach} = JSON.parse(JSON.stringify({...options}))
 
+    let images = await loadImages(originals)
     margin = margin*72
     width = width*72
     height = height*72
@@ -311,6 +312,7 @@ async function mirrorBleed(data, box, position){
                 case('bottom'):{
                     context.scale(1,-1)
                     context.drawImage(image,0,image.height-scaledHeight,image.width,scaledHeight,0,0,canvas.width,-canvas.height)
+                    
                 }
                 case('right'):{
                     context.scale(-1,1)
@@ -339,7 +341,9 @@ async function mirrorBleed(data, box, position){
                 }
             }
             context.restore()
-            resolve(canvas.toDataURL())
+            let data = canvas.toDataURL('image/jpeg', 1)
+            if (data === 'data:,') console.log('herre ' + position)
+            resolve(data)
         }
         image.src = data
     })
@@ -397,7 +401,9 @@ async function edgeBleed(data, box, position, smoothing = 2){
             }
 
             context.restore()
-            resolve(canvas.toDataURL())
+            let data = canvas.toDataURL('image/jpeg', 1)
+            if (data === 'data:,') console.log('herre')
+            resolve(data)
         }
         image.src = data
     })
@@ -452,7 +458,9 @@ async function cover(data, output = {}){
                 context.rotate(Math.PI / 2)
                 context.drawImage(image,crop.x,crop.y,crop.width,crop.height,-hd2,-wd2,canvas.height,canvas.width)
             }
-            resolve(canvas.toDataURL())
+            let data = canvas.toDataURL('image/jpeg', 1)
+            if (data === 'data:,') console.log('herre')
+            resolve(data)
         }
         image.src = data; 
     })
@@ -484,8 +492,6 @@ async function fit(data, output = {}){
  
                 canvas.width = image.width*ratio
                 canvas.height = image.height*ratio
-                console.log(canvas.width, canvas.height)
-                console.log(image.width*ratio, image.height*ratio)
 
                 context.drawImage(image, 0+vOffset/2 ,0+hOffset/2,image.width*ratio - vOffset, image.height*ratio - hOffset)
             } else {
@@ -502,7 +508,9 @@ async function fit(data, output = {}){
                 context.rotate(Math.PI / 2)
                 context.drawImage(image, -hd2 + hOffset,-wd2 + vOffset, image.width*ratio, image.height*ratio)
             }
-            resolve(canvas.toDataURL())
+            let data = canvas.toDataURL('image/jpeg', 1)
+            if (data === 'data:,') console.log('herre')
+            resolve(data)
         }
         image.src = data;
     })

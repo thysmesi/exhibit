@@ -15,15 +15,15 @@
 
 	let options = {
 		page: {
-			width: 12,
-			height: 18
+			width: 8.5,
+			height: 11
 		},
 		fill: 'cover',
 		width: 5,
 		height: 7,
 		bleed: {
 			value: .125,
-			type: 'mirror'
+			type: 'inset'
 		},
 		marks: true,
 		margin: .125,
@@ -36,12 +36,7 @@
 
 	let compressing = false
 	let converting = false
-	// let originals = []
 	let hover = false
-
-	afterUpdate(()=>{
-		console.log(options.page.width)
-	})
 
 	async function addOriginalsHandleClick(){
 		let files = await importFiles('image/*,.pdf', true)
@@ -117,17 +112,17 @@
 		<div class="editor-options-container">
 			<h3 class="editor-options-header">Page</h3>
 			<div class="editor-options">
-				<NumberInput label="Width" min={0} bind:value={options.page.width}/>
-				<NumberInput label="Height" min={0} bind:value={options.page.height}/>
-				<NumberInput label="Margin" min={0} bind:value={options.margin}/>
+				<NumberInput label="Width" min={0} max={1000} bind:value={options.page.width}/>
+				<NumberInput label="Height" min={0} max={1000} bind:value={options.page.height}/>
+				<NumberInput label="Margin" min={0} max={1000} bind:value={options.margin}/>
 			</div>
 		</div>
 		<div class="editor-options-container">
 			<h3 class="editor-options-header">Cutting</h3>
 			<div class="editor-options">
-				<NumberInput label="Width" min={0} bind:value={options.page.width}/>
-				<NumberInput label="Height" min={0} bind:value={options.page.height}/>
-				<NumberInput label="Margin" min={0} bind:value={options.page.margin}/>
+				<NumberInput label="Width" min={0} max={1000} bind:value={options.page.width}/>
+				<NumberInput label="Height" min={0} max={1000} bind:value={options.page.height}/>
+				<NumberInput label="Margin" min={0} max={1000} bind:value={options.page.margin}/>
 			</div>
 		</div>
 	</div>
@@ -162,12 +157,11 @@
 		width: 100%;
 	}
 	#editor-options{
-		min-width: 450px;
-		flex-grow: 1;
+		width: 450px;
 		display: flex;
 		flex-direction: column;
-		align-items: flex-end;
 		padding-top: 20px;
+		align-items: center;
 	}
 	#editor-preview{
 		flex-grow: 1;
