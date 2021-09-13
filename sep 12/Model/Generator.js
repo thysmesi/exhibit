@@ -1,11 +1,8 @@
 class Generator {
     constructor(images = []) {
         this.images = images
-        // this.images.forEach(image => {
-        //     image.horizontal = image.clone().flipX()  
-        //     image.vertical = image.clone().flipY()
-        //     image.all = image.vertical.clone().flipX()
-        // })
+
+
     }
 
 
@@ -194,6 +191,8 @@ class Generator {
         canvas.width = options.page.width
         canvas.height = options.page.height
         let context = canvas.getContext('2d')
+        context.fillStyle = "white"
+        context.fillRect(0,0,canvas.width,canvas.height)
 
         var cache = {}
 
@@ -283,39 +282,39 @@ class Generator {
     }
 }
 
-let debug = document.getElementById('debug')
-debug.width = 8.5*72
-debug.height = 11*72
-let debugContext = debug.getContext('2d')    
+// let debug = document.getElementById('debug')
+// debug.width = 8.5*72
+// debug.height = 11*72
+// let debugContext = debug.getContext('2d')    
 
 
-IJS.Image.load(image).then(async image => {
+// IJS.Image.load(image).then(async image => {
     
-    let generator = new Generator([image])
-    let template = generator.template({
-        page: {
-            width: 8.5*72,
-            height: 11*72,
-            margin: .5*72
-        },
-        content: {
-            width: false,
-            height: false,
-            count: 4,
-            spacing: .125*72,
-            each: false,
-            dpi: 300,
-            fit: false,
-            bleed: {
-                width: .125*72,
-                type: 'edge'
-            }
-        },
-        marks: {
-            length: .125*72,
-            offset: .125*72
-        }
-    })
+//     let generator = new Generator([image])
+//     let template = generator.template({
+//         page: {
+//             width: 8.5*72,
+//             height: 11*72,
+//             margin: .5*72
+//         },
+//         content: {
+//             width: false,
+//             height: false,
+//             count: 4,
+//             spacing: .125*72,
+//             each: false,
+//             dpi: 300,
+//             fit: false,
+//             bleed: {
+//                 width: .125*72,
+//                 type: 'edge'
+//             }
+//         },
+//         marks: {
+//             length: .125*72,
+//             offset: .125*72
+//         }
+//     })
 
-    debugContext.drawImage(await generator.render(template, 1), 0, 0)
-})
+//     debugContext.drawImage(await generator.render(template, 1), 0, 0)
+// })
