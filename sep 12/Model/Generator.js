@@ -185,7 +185,7 @@ class Generator {
         return {contents, options}
     }
 
-    async render({contents, options}, page, scale) {
+    async render({contents, options}, page) {
         let max = 2000
 
         let canvas = document.createElement('canvas')
@@ -232,7 +232,7 @@ class Generator {
             if(options.content.each === null || options.content.each === false) {
                 image = this.images[page-1]
             } else {
-                image = this.images[(page-1)*contents.length + i]
+                image = this.images[Math.floor(((page-1)*(contents.length)+i) / options.content.each)]
             }
 
             if(cache[name] === undefined) {

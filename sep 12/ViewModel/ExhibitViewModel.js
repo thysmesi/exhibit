@@ -11,12 +11,44 @@ function decreasePage(){
     viewModel.page--
     viewModel.update()
 }
-function steralizePage(){
-    viewModel.page = Math.max(viewModel.originals.length>0 ? 1 : 0, Math.min(viewModel.originals.length, viewModel.page))
+function steralizePage(viewModel){
+    // let max = Math.ceil(viewModel.originals.length * (viewModel.options.content.each ? viewModel.options.content.each : viewModel.count) / viewModel.count)
+    viewModel.page = Math.max(viewModel.originals.length>0 ? 1 : 0, Math.min(viewModel.max, viewModel.page))
+}
+async function readAsText(file){
+    return new Promise(resolve =>{
+        let reader = new FileReader()
+
+        reader.onload = function() {
+            resolve(reader.result)
+        }
+
+        reader.readAsText(file)
+    })
+}
+async function readAsArrayBuffer(file){
+    return new Promise(resolve =>{
+        let reader = new FileReader()
+
+        reader.onload = function() {
+            resolve(reader.result)
+        }
+
+        reader.readAsArrayBuffer(file)
+    })
+}
+async function loadImage(src){
+    return new Promise(resolve => {
+        let image = new Image()
+        image.onload = ()=>{
+            resolve(image)
+        }
+        image.src = src
+    })
 }
 
 let viewModel = new class {
-    constructor(){
+    constructor(){ 
         let _this = this
         this.bindings = [
             {
@@ -87,8 +119,15 @@ let viewModel = new class {
                     return _this.options["content"]["count"] || ''
                 },
                 set value(value) {
-                    _this.options["content"]["count"] =  value
-                    this.node.value = value
+                    let width = _this.options["page"]["width"]
+                    let height = _this.options["page"]["height"]
+                    let margin = _this.options["page"]["margin"]
+                    let spacing = _this.options["content"]["spacing"]
+
+                    let marginBox = {width: width - margin, height: height - margin}
+                    
+                    // print(width, height, margin, spacing)
+
                     _this.update()
                 }
             }, {
@@ -235,7 +274,6 @@ let viewModel = new class {
             content: {
                 width: 5*72,
                 height: 7*72,
-                count: false,
                 spacing: .125*72,
                 each: false,
                 dpi: 300,
@@ -251,6 +289,7 @@ let viewModel = new class {
                 shown: true
             }
         }
+        this.max = 0
         this.page = 1
         this.previewContainer = document.getElementById("preview-container")
         this.preview = document.getElementById("preview")
@@ -260,13 +299,67 @@ let viewModel = new class {
         this.originalCount = document.getElementById('original-count')
         this.originalInput = document.getElementById("original-uploader")
         this.addOriginalButton = document.getElementById("add-original-button")
+        this.countInput = document.getElementById('content-count')
         this.originalInput.addEventListener('input', async (event) => {
             this.notification.show()
             for(let i = 0; i < event.target.files.length; i++){
                 let file = event.target.files[i]
+                let extension = file.name.split('.').pop();
+
                 this.notification.setMessage(`parseing: ${file.name}`)
                 this.notification.setStatus(i/event.target.files.length)
-                await this.addOriginal(URL.createObjectURL(file))
+
+                if(extension == 'svg') {
+                    let text = await readAsText(file)
+                    var svg = new Blob([text], {
+                        type: "image/svg+xml;charset=utf-8"
+                    })
+                    let url = URL.createObjectURL(svg);
+                    let image = await loadImage(url)
+                    let div = document.createElement('div')
+                    div.innerHTML = text
+                    let box = div.firstChild.viewBox.baseVal;
+
+                    let aspect = box.width / box.height
+                    let canvas = document.createElement('canvas')
+                    let context = canvas.getContext('2d')
+                    canvas.width = 2000
+                    canvas.height = canvas.width / aspect
+                    context.drawImage(image,0,0,canvas.width,canvas.height)
+    
+                    await this.addOriginal(canvas.toDataURL())
+                    
+                }
+                if(extension == 'png' || extension == 'jpeg' || extension == 'jpg' || extension == 'webp' || extension == 'bmp') {
+                    await this.addOriginal(URL.createObjectURL(file))
+                }
+                if(extension == 'tiff') {
+                    let buffer = await readAsArrayBuffer(file)
+                    let tiff = new Tiff({buffer: buffer})
+                    await this.addOriginal(tiff.toCanvas().toDataURL())
+                }
+                if(extension == 'pdf') {
+                    let typedarray = new Uint8Array(await readAsArrayBuffer(file))
+                    let pdf = await pdfjsLib.getDocument(typedarray).promise
+                    let pages = pdf.numPages
+                    for(let i = 1; i <= pages; i ++) {
+                        this.notification.setMessage(`parseing page ${i}/${pages}: ${file.name}`)
+                        this.notification.setStatus(i/pages)
+
+                        let page = await pdf.getPage( i )
+                        let viewport = page.getViewport()
+                        let aspect = viewport.viewBox[2] / viewport.viewBox[3]
+                        
+                        viewport = page.getViewport({ scale:  2000 / viewport.viewBox[2] })
+                        let canvas = document.createElement('canvas')
+                        let context = canvas.getContext('2d')
+                        canvas.width = 2000
+                        canvas.height = 2000 / aspect
+
+                        await page.render({canvasContext: context, viewport: viewport}).promise
+                        await this.addOriginal(canvas.toDataURL())
+                    }
+                }
             }
             this.originalInput.value = ''
             this.notification.hide()
@@ -307,9 +400,9 @@ let viewModel = new class {
                 else if(binding.node.type === "radio") {
                     if(binding.node.checked) binding.value = binding.node.value
                 }
-                console.log(binding.node.id + ": " + binding.value)
             })
         })
+        this.update()
     }
 
     async addOriginal(image){
@@ -327,12 +420,14 @@ let viewModel = new class {
     }
 
     async update() {
-        steralizePage()
         this.resize()
         let templete = this.model.template(this.options)
+        this.max = Math.ceil(this.originals.length * (this.options.content.each ? this.options.content.each : templete.contents.length) / templete.contents.length)
+        steralizePage(this)
+        this.countInput.value = templete.contents.length
         this.context.drawImage(await this.model.render(templete, this.page, parseFloat(this.preview.style.zoom)),0,0)
         this.originalIndex.innerText = this.page
-        this.originalCount.innerText = this.model.images.length
+        this.originalCount.innerText = this.max
     }
 
     async insertImageBase64(base64) {
