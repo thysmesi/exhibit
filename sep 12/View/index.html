@@ -16,12 +16,75 @@
     <nav>
         <section>
             <h3>Page</h3>
+            <div class="options"> 
+                <div class="labels" style="height: 90px;">
+                    <label for="page-width">Width: </label>
+                    <label for="page-height">Height: </label>
+                    <label for="page-margin">Margin: </label>
+                </div>
+                <div class="inputs" style="height: 90px;">
+                    <input id="page-width" type="text">  
+                    <input id="page-height" type="text"> 
+                    <input id="page-margin" type="text"> 
+                </div>    
+            </div>
         </section>
         <section>
             <h3>Content</h3>
+            <div class="options"> 
+                <div class="labels" style="height: 202.5px;">
+                    <label for="content-width">Width: </label>
+                    <label for="content-height">Height: </label>
+                    <label for="content-count">Count: </label>
+                    <label for="content-spacing">Spacing: </label>
+                    <label for="content-each">Each: </label>
+                    <label for="content-dpi">dpi: </label>
+                    <label for="content-fit">Fit: </label>
+                </div>
+                <div class="inputs" style="height: 202.5px;">
+                    <input id="content-width" type="text">  
+                    <input id="content-height" type="text"> 
+                    <input id="content-count" type="text"> 
+                    <input id="content-spacing" type="text">  
+                    <input id="content-each" type="text"> 
+                    <input id="content-dpi" type="text"> 
+                    <input id="content-fit" type="checkbox"> 
+                </div>   
+            </div>
+            <section class="tab" style="margin-top: 10px;">
+                <h4>Bleed</h4>
+                <div class="options"> 
+                    <div class="labels" style="height: 110px;">
+                        <label for="content-bleed-width">Width: </label>
+                        <label for="content-bleed-type-mirror">Mirror:</label>
+                        <label for="content-bleed-type-edge">Edge:</label>
+                        <label for="content-bleed-type-inset">Inset:</label>
+
+                    </div>
+                    <div class="inputs" style="height: 110px;">
+                        <input id="content-bleed-width" type="text"> 
+                        <input type="radio" name="bleed" id="content-bleed-type-mirror" value="mirror"> 
+                        <input type="radio" name="bleed" id="content-bleed-type-edge" value="edge">
+                        <input type="radio" name="bleed" id="content-bleed-type-inset" value="inset">
+
+                    </div>   
+                </div>
+            </section> 
         </section>
         <section>
             <h3>Marks</h3>
+            <div class="options"> 
+                <div class="labels" style="height: 80px;">
+                    <label for="marks-length">Length: </label>
+                    <label for="marks-offset">Offset: </label>
+                    <label for="marks-shown">Shown: </label>
+                </div>
+                <div class="inputs" style="height: 80px;">
+                    <input id="marks-length" type="text">  
+                    <input id="marks-offset" type="text"> 
+                    <input id="marks-fit" type="checkbox"> 
+                </div>   
+            </div>
         </section>
     </nav>
     <main>
@@ -31,11 +94,28 @@
             </canvas>
         </div>
         <div id="originals">
-            
+            <div id="add-original-button" class="original-container" onclick="addOriginalButtonClick()">
+                <img id="add-original-button-icon" src="../assets/plus.svg" style="fill: white;" >
+            </div>
         </div>
     </main>
+    <div id="preview-stepper">
+        <img class="carret left-carret" src="../assets/carret-right.svg" onclick="decreasePage()">
+        <div id="original-index-node"><span id="original-index">0</span>/<span id="original-count">0</span></div>
+        <img class="carret" src="../assets/carret-right.svg" onclick="increasePage()">
+    </div>
 
+    <input id="original-uploader" type="file" accept="image/*,.pdf,.tiff,.svg" multiple>
 
+    <div id="notification-container">
+        <div id="notification-background"></div>
+        <div id="notification">
+            <div id="notification-message"></div>
+            <div id="notification-status-container">
+                <div id="notification-status-progress"></div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://www.lactame.com/lib/image-js/0.21.2/image.min.js"></script>
     <script src="../Model/Extensions/IJS.Image+resizingData.js"></script>

@@ -1,7 +1,6 @@
 Object.defineProperty(IJS.Image.prototype, "fit", {
     value: async function fit({width, height}) {
         let resizingData = this.resizingData({width, height, fit: true})
-        console.log(resizingData)
         let image = this.clone()
 
         if(resizingData.scaled === "width") {

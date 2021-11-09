@@ -1,8 +1,6 @@
 class Generator {
     constructor(images = []) {
         this.images = images
-
-
     }
 
 
@@ -30,7 +28,8 @@ class Generator {
     //     },
     //     marks: {
     //         length: Number,
-    //         offset: Number
+    //         offset: Number,
+    //         shown: Boolean
     //     }
     // }
 
@@ -186,7 +185,9 @@ class Generator {
         return {contents, options}
     }
 
-    async render({contents, options}, page) {
+    async render({contents, options}, page, scale) {
+        let max = 2000
+
         let canvas = document.createElement('canvas')
         canvas.width = options.page.width
         canvas.height = options.page.height
@@ -197,12 +198,35 @@ class Generator {
         var cache = {}
 
         for(let i = 0; i < contents.length; i++) {
+            let content = contents[i]
+            let unscaled = JSON.parse(JSON.stringify(contents[i]))
             let {main, left, right, bottom, top, topleft, topright, bottomleft, bottomright} = contents[i]
-    
+            if (main.width > max || main.height > max) {
+                let scale = 2000 / Math.max(main.width, main.height)
+                main.width *= scale
+                main.height *= scale
+                left.width = Math.floor(left.width * scale)
+                left.height *= scale
+                right.width *= scale
+                right.height *= scale
+                bottom.width *= scale
+                bottom.height *= scale
+                top.width *= scale
+                top.height = Math.floor(top.height * scale)
+                topleft.width = Math.floor(topleft.width * scale)
+                topleft.height = Math.floor(topleft.height * scale)
+                topright.width *= scale
+                topright.height = Math.floor(topright.height * scale)
+                bottomleft.width = Math.floor(bottomleft.width * scale)
+                bottomleft.height *= scale
+                bottomright.width *= scale
+                bottomright.height *= scale
+            }
+            
             let width = main.width+left.width+right.width
             let height = main.height+top.height+bottom.height
             let name = `${width}x${height}l${left.width}r${right.width}t${top.height}b${bottom.height}`
-    
+            
             let image
 
             if(options.content.each === null || options.content.each === false) {
@@ -216,61 +240,58 @@ class Generator {
                 canvas.width = main.width+left.width+right.width
                 canvas.height = main.height+top.height+bottom.height
                 let context = canvas.getContext('2d')
-        
                 if(image !== undefined) {
-                    image = await image.fill({width: main.width*2, height: main.height*2})
+                    image = await image.fill({width: main.width, height: main.height})
                     image.horizontal = image.clone().flipX()  
                     image.vertical = image.clone().flipY()
                     image.all = image.vertical.clone().flipX()
-        
+
+
+                    let images = {}
                     switch (options.content.bleed.type) {
                         case 'inset' : {
                             context.drawImage(image.getCanvas(),0,0,width, height)
                             break
                         }
                         case 'edge' : {
-                            // ----- Main ----- //
-                            context.drawImage(image.getCanvas(), left.width, top.height, main.width, main.height)
-                            // ----- Left ----- //
-                            context.drawImage(image.crop({width:1}).getCanvas(), 0, top.height, left.width, left.height)
-                            // ----- Right ----- //
-                            context.drawImage(image.crop({x:image.width-1, width:1}).getCanvas(), left.width+main.width, top.height, right.width, right.height)
-                            // ----- Top ----- //
-                            context.drawImage(image.crop({height: 1}).getCanvas(), left.width, 0, top.width, top.height)
-                            // ----- Bottom ----- //
-                            context.drawImage(image.crop({y: image.height-1, height: 1}).getCanvas(), left.width, top.height+main.height, bottom.width, bottom.height)                    
-                            // ----- Top Left ----- //
-                            context.drawImage(image.crop({width: 1, height: 1}).getCanvas(), 0, 0, topleft.width, topleft.height)
-                            // ----- Top Right ----- //
-                            context.drawImage(image.crop({x: image.width-1, width: 1, height: 1}).getCanvas(), left.width+main.width, 0, topright.width, topright.height)
-                            // ----- Bottom Left ----- //
-                            context.drawImage(image.crop({y: image.height-1, width: 1, height: 1}).getCanvas(), 0, top.height+main.height, bottomleft.width, bottomleft.height)
-                            // ----- Bottom Right ----- //
-                            context.drawImage(image.crop({x: image.width-1, y: image.height-1, width: 1, height: 1}).getCanvas(), left.width+main.width, top.height+main.height, bottomright.width, bottomright.height)                   
+                            images.main = image.getCanvas()
+                            if(left.width>0)images.left = image.crop({width:1}).getCanvas()
+                            if(right.width>0)images.right = image.crop({x:image.width-1, width:1}).getCanvas()
+                            if(top.height>0) images.top = image.crop({height: 1}).getCanvas()
+                            if(bottom.height>0) images.bottom = image.crop({y: image.height-1, height: 1}).getCanvas()
+                            if(top.height>0 && left.width>0) images.topleft = image.crop({width: 1, height: 1}).getCanvas()
+                            if(top.height>0 && right.width>0) images.topright = image.crop({x: image.width-1, width: 1, height: 1}).getCanvas()
+                            if(bottom.height>0 && left.width>0) images.bottomleft = image.crop({y: image.height-1, width: 1, height: 1}).getCanvas()
+                            if(bottom.height>0 && right.width>0) images.bottomright = image.crop({x: image.width-1, y: image.height-1, width: 1, height: 1}).getCanvas()
                             break
                         }
                         case 'mirror' : {
-                            // ----- Main ----- //
-                            context.drawImage(image.getCanvas(), left.width, top.height, main.width, main.height)
-                            // ----- Left ----- //
-                            context.drawImage(image.horizontal.crop({x: image.width-(left.width*2), width: left.width*2}).getCanvas(), 0, top.height, left.width, left.height)
-                            // ----- Right ----- //
-                            context.drawImage(image.horizontal.crop({width: right.width*2}).getCanvas(), left.width+main.width, top.height, right.width, right.height)
-                            // ----- Top ----- //
-                            context.drawImage(image.vertical.crop({y: image.height-(top.height*2), height: top.height*2}).getCanvas(), left.width, 0, top.width, top.height)
-                            // ----- Bottom ----- //
-                            context.drawImage(image.vertical.crop({height: bottom.height*2}).getCanvas(), left.width, top.height+main.height, bottom.width, bottom.height)
-                            // ----- Top Left ----- //
-                            context.drawImage(image.all.crop({x: image.width-(topleft.width*2), y: image.height-(topleft.height*2), width: topleft.width*2, height: topleft.height*2}).getCanvas(), 0, 0, topleft.width, topleft.height)
-                            // ----- Top Right ----- //
-                            context.drawImage(image.all.crop({y: image.height-(topleft.height*2), width: topright.width*2, height: topright.height*2}).getCanvas(), left.width+main.width, 0, topright.width, topright.height)
-                            // ----- Bottom Left ----- //
-                            context.drawImage(image.all.crop({x: image.width-(bottomleft.width*2), width: bottomleft.width*2, height: bottomleft.height*2}).getCanvas(), 0, top.height+main.height, bottomleft.width, bottomleft.height)
-                            // ----- Bottom Right ----- //
-                            context.drawImage(image.all.crop({width: bottomright.width*2, height: bottomright.height*2}).getCanvas(), left.width+main.width, top.height+main.height, bottomright.width, bottomright.height)
+                            images.main = image.getCanvas()
+                            if(left.width>0) images.left = image.horizontal.crop({x: image.width-(left.width), width: left.width}).getCanvas()
+                            if(right.width>0) images.right = image.horizontal.crop({width: right.width}).getCanvas()
+                            if(top.height>0) images.top = image.vertical.crop({y: image.height-(top.height), height: top.height}).getCanvas()
+                            if(bottom.height>0) images.bottom = image.vertical.crop({height: bottom.height}).getCanvas()
+                            if(top.height>0 && left.width>0) images.topleft = image.all.crop({x: image.width-(topleft.width), y: image.height-(topleft.height), width: topleft.width, height: topleft.height}).getCanvas()
+                            if(top.height>0 && right.width>0) images.topright = image.all.crop({y: image.height-(topleft.height), width: topright.width, height: topright.height}).getCanvas()
+                            if(bottom.height>0 && left.width>0) images.bottomleft = image.all.crop({x: image.width-(bottomleft.width), width: bottomleft.width, height: bottomleft.height}).getCanvas()            
+                            if(bottom.height>0 && right.width>0) images.bottomright = image.all.crop({width: bottomright.width, height: bottomright.height}).getCanvas()
                             break
                         }
                     }
+
+                    Object.keys(images).forEach(key => {
+                        switch (key) {
+                            case "main" : context.drawImage(images[key], left.width, top.height, unscaled.main.width, unscaled.main.height); break;
+                            case "left" : context.drawImage(images[key], 0, top.height, unscaled.left.width, unscaled.left.height); break;
+                            case "right" : context.drawImage(images[key], left.width+main.width, top.height, unscaled.right.width, unscaled.right.height); break;
+                            case "top" : context.drawImage(images[key], left.width, 0, unscaled.top.width, unscaled.top.height); break;
+                            case "bottom" : context.drawImage(images[key], left.width, top.height+main.height, unscaled.bottom.width, unscaled.bottom.height); break;
+                            case "topleft" : context.drawImage(images[key], 0, 0, unscaled.topleft.width, unscaled.topleft.height); break;
+                            case "topright" : context.drawImage(images[key], left.width+main.width, 0, unscaled.topright.width, unscaled.topright.height); break;
+                            case "bottomleft" : context.drawImage(images[key], 0, top.height+main.height, unscaled.bottomleft.width, unscaled.bottomleft.height); break;
+                            case "bottomright" : context.drawImage(images[key], left.width+main.width, top.height+main.height, unscaled.bottomright.width, unscaled.bottomright.height); break;
+                        }
+                    })
         
                     cache[name] = canvas
                 }
@@ -281,40 +302,3 @@ class Generator {
         return canvas
     }
 }
-
-// let debug = document.getElementById('debug')
-// debug.width = 8.5*72
-// debug.height = 11*72
-// let debugContext = debug.getContext('2d')    
-
-
-// IJS.Image.load(image).then(async image => {
-    
-//     let generator = new Generator([image])
-//     let template = generator.template({
-//         page: {
-//             width: 8.5*72,
-//             height: 11*72,
-//             margin: .5*72
-//         },
-//         content: {
-//             width: false,
-//             height: false,
-//             count: 4,
-//             spacing: .125*72,
-//             each: false,
-//             dpi: 300,
-//             fit: false,
-//             bleed: {
-//                 width: .125*72,
-//                 type: 'edge'
-//             }
-//         },
-//         marks: {
-//             length: .125*72,
-//             offset: .125*72
-//         }
-//     })
-
-//     debugContext.drawImage(await generator.render(template, 1), 0, 0)
-// })
