@@ -66,7 +66,7 @@ let viewModel = new class {
         this.bindings = [
             {
                 node: document.getElementById("page-width"),
-                max: 120,
+                max: 52,
                 min: 0.5,
                 get value() {
                     return _this.options["page"]["width"] / 72
@@ -78,7 +78,7 @@ let viewModel = new class {
                 }
             }, {
                 node: document.getElementById("page-height"),
-                max: 120,
+                max: 52,
                 min: 0.5,
                 get value() {
                     return _this.options["page"]["height"] / 72
@@ -125,19 +125,21 @@ let viewModel = new class {
                     this.node.value = value || ''
                     _this.update()
                 }
-            }, {
-                node: document.getElementById("content-dpi"),
-                max: 1200,
-                min: 72,
-                get value() {
-                    return _this.options["content"]["dpi"]
-                },
-                set value(value) {
-                    _this.options["content"]["dpi"] =  value 
-                    this.node.value = value
-                    _this.update()
-                }
-            }, {
+            },
+            // , {
+            //     node: document.getElementById("content-dpi"),
+            //     max: 1200,
+            //     min: 72,
+            //     get value() {
+            //         return _this.options["content"]["dpi"]
+            //     },
+            //     set value(value) {
+            //         _this.options["content"]["dpi"] =  value 
+            //         this.node.value = value
+            //         _this.update()
+            //     }
+            // }, 
+            {
                 node: document.getElementById("content-fit"),
                 get value() {
                     return _this.options["content"]["fit"]
@@ -242,6 +244,69 @@ let viewModel = new class {
         this.notification.setMessage = function(message) {
             this.message.innerText = message
         }
+        this.exportName = ''
+        this.exportDPI = 300
+        this.navExportButton = document.getElementById('nav-export-button')
+        this.exportOriginals = document.getElementById('originial-export-options')
+        this.exportSaveButton = document.getElementById('export-save-button')
+        this.fileDPIInput = document.getElementById('file-dpi-input')
+        this.fileDPIInput.value = this.exportDPI
+        this.exportSampler = document.getElementById('sampler')
+        this.fileDPIInput.addEventListener('click', ()=>{
+            this.fileDPIInput.select()
+        })
+        this.fileDPIInput.addEventListener('change', ()=>{
+            this.exportDPI = Math.max(72, Math.min(1200, parseInt(this.fileDPIInput.value)))
+            this.fileDPIInput.value = this.exportDPI
+        })
+        this.exportSaveButton.addEventListener('click', async ()=> {
+            this.notification.setMessage('saving...')
+            this.notification.setStatus(0)
+            this.notification.show()
+
+            this.exportContainer.style.display = 'none'
+
+            await this.model.generate(this.model.template(this.options), this.exportDPI, this.notification)
+
+            this.notification.hide()
+        })
+        this.fileNameInput = document.getElementById('file-name-input')
+        this.fileNameInput.addEventListener('change', () => {
+            this.exportName = this.fileNameInput.value
+            if(this.exportName.length == 0) {
+                this.exportName = `asdf${`${Math.random()*100000 + 1}`.substring(1,5)}`
+            }
+        })
+        this.fileNameInput.value = `asdf${`${Math.random()*100000 + 1}`.substring(1,5)}`
+        this.exportOptions = []
+        this.navExportButton.addEventListener('click', ()=>{
+            this.exportContainer.style.display = 'flex'
+
+            this.exportOriginals.innerHTML = ''
+            for(let i = 0; i < this.model.images.length; i++){
+                let image = this.model.images[i].image
+                let file = this.model.images[i].file
+                let extension
+                if(file.destroyed === false) {
+                    extension = 'pdf'
+                } else {
+                    extension = file.name.split('.').pop().toLowerCase();
+                }
+                this.exportOriginals.innerHTML += `
+                    <div class="export-original">
+                        <div class="flex">
+                            <img class="export-original-icon" src="../assets/${extension == 'svg' ? 'svg.svg' : extension == 'pdf' ? 'pdf.svg' : 'image.svg'}">
+                            <div class="export-original-name">${file.name}</div>    
+                        </div>
+                    </div>
+                `
+            }
+        })
+        this.exportContainer = document.getElementById('export-container')
+        this.exportClose = document.getElementById('export-close')
+        this.exportClose.addEventListener('click', ()=>{
+            this.exportContainer.style.display = 'none'
+        })
         this.options = {
             page: {
                 width: 8.5*72,
@@ -391,7 +456,6 @@ let viewModel = new class {
                     context.drawImage(image,0,0,canvas.width,canvas.height)
     
                     await this.addOriginal(canvas.toDataURL(), file)
-                    
                 }
                 if(defaultSupported.includes(extension)) {
                     await this.addOriginal(URL.createObjectURL(file), file)
@@ -428,7 +492,8 @@ let viewModel = new class {
                         canvas.height = 1000 / aspect
 
                         await page.render({canvasContext: context, viewport: viewport}).promise
-                        await this.addOriginal(canvas.toDataURL(), file)
+                        page.name = file.name + ` ${i}`
+                        await this.addOriginal(canvas.toDataURL(), page)
                     }
                 }
             }
