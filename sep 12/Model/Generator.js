@@ -324,4 +324,7 @@ class Generator {
 
         return canvas
     }
+    async generate({contents, options}) {
+        
+    }
 }
