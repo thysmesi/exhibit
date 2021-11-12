@@ -90,7 +90,7 @@ let viewModel = new class {
                 }
             }, {
                 node: document.getElementById("page-margin"),
-                get max(){ return Math.min(_this.options["page"]["width"], _this.options["page"]["height"]) },
+                get max(){ return Math.min(_this.options["page"]["width"], _this.options["page"]["height"]) / 2 / 72},
                 min: 0,
                 get value() {
                     return _this.options["page"]["margin"] / 72
@@ -265,7 +265,7 @@ let viewModel = new class {
             this.notification.show()
 
             this.exportContainer.style.display = 'none'
-
+            
             await this.model.generate(this.model.template(this.options), this.exportDPI, this.exportName, this.notification)
 
             this.notification.hide()
@@ -587,6 +587,9 @@ let viewModel = new class {
         }
         let templete = this.model.template(this.options)
         this.max = Math.ceil(this.originals.length * (this.options.content.each ? this.options.content.each : templete.contents.length) / templete.contents.length)
+        if(isNaN(this.max)) {
+            this.max = 1
+        }
         steralizePage(this)
         if(this.dimMode) {
             this.countWidthInput.value = templete.placement.horizontal
