@@ -113,12 +113,14 @@ let viewModel = new class {
                 }
             }, {
                 node: document.getElementById("content-count"),
-                max: 300,
+                max: 50,
                 min: 0,
+                input: true,
                 get value() {
-                    return _this.options["content"]["count"] || ''
+                    return parseFloat(_this.countInput.value)
                 },
                 set value(value) {
+                    print(value)
                     let width = _this.options["page"]["width"]
                     let height = _this.options["page"]["height"]
                     let margin = _this.options["page"]["margin"]
@@ -126,8 +128,6 @@ let viewModel = new class {
 
                     let marginBox = {width: width - margin, height: height - margin}
                     
-                    // print(width, height, margin, spacing)
-
                     _this.update()
                 }
             }, {
@@ -144,14 +144,15 @@ let viewModel = new class {
                 }
             }, {
                 node: document.getElementById("content-each"),
-                max: 300,
+                max: 50,
                 min: 0,
                 get value() {
                     return _this.options["content"]["each"] || ''
                 },
                 set value(value) {
-                    _this.options["content"]["each"] =  value
-                    this.node.value = value
+                    value = isNaN(value) | value==0 ? false : value
+                    _this.options["content"]["each"] = value
+                    this.node.value = value || ''
                     _this.update()
                 }
             }, {
@@ -228,8 +229,7 @@ let viewModel = new class {
                     this.node.value = value 
                     _this.update()
                 }
-            }
-            , {
+            }, {
                 node: document.getElementById("marks-offset"),
                 min: 0,
                 max: 1,
@@ -241,7 +241,16 @@ let viewModel = new class {
                     this.node.value = value 
                     _this.update()
                 }
-            }
+            }, {
+                node: document.getElementById("marks-shown"),
+                get value() {
+                    return _this.options["marks"]["shown"]
+                },
+                set value(value) {
+                    _this.options["marks"]["shown"] = value
+                    _this.update()
+                }
+            },
             
         ]
         this.originals = []
@@ -276,6 +285,7 @@ let viewModel = new class {
                 height: 7*72,
                 spacing: .125*72,
                 each: false,
+                count: false,
                 dpi: 300,
                 fit: false,
                 bleed: {
@@ -285,7 +295,7 @@ let viewModel = new class {
             },
             marks: {
                 length: .125*72,
-                offset: .125*72,
+                offset: 0,
                 shown: true
             }
         }
@@ -304,10 +314,11 @@ let viewModel = new class {
             this.notification.show()
             for(let i = 0; i < event.target.files.length; i++){
                 let file = event.target.files[i]
-                let extension = file.name.split('.').pop();
+                let extension = file.name.split('.').pop().toLowerCase();
 
                 this.notification.setMessage(`parseing: ${file.name}`)
                 this.notification.setStatus(i/event.target.files.length)
+                let defaultSupported = ['png','jpeg','jpg','webp','bmp','jfif','xbm','pjp','jxl','pjpeg','avif']
 
                 if(extension == 'svg') {
                     let text = await readAsText(file)
@@ -330,10 +341,10 @@ let viewModel = new class {
                     await this.addOriginal(canvas.toDataURL())
                     
                 }
-                if(extension == 'png' || extension == 'jpeg' || extension == 'jpg' || extension == 'webp' || extension == 'bmp') {
+                if(defaultSupported.includes(extension)) {
                     await this.addOriginal(URL.createObjectURL(file))
                 }
-                if(extension == 'tiff') {
+                if(extension == 'tiff' || extension == 'tif') {
                     let buffer = await readAsArrayBuffer(file)
                     let tiff = new Tiff({buffer: buffer})
                     await this.addOriginal(tiff.toCanvas().toDataURL())
@@ -364,9 +375,14 @@ let viewModel = new class {
             this.originalInput.value = ''
             this.notification.hide()
         })
+        this.originalsNode = document.getElementById('originals')
         this.resize()
         this.previewContainer.addEventListener('mouseenter', ()=>{
             this.previewStepper.style.opacity = 1
+        })
+        this.addOriginalButton.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            this.originalsNode.scrollLeft += event.deltaY;
         })
         this.previewContainer.addEventListener('mouseleave', (event)=>{
             var divRect = this.previewContainer.getBoundingClientRect();
@@ -374,6 +390,10 @@ let viewModel = new class {
                 event.clientY <= divRect.top || event.clientY >= divRect.bottom) {
                     this.previewStepper.style.opacity = 0
             }
+        })
+        this.originalsNode.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            this.originalsNode.scrollLeft += event.deltaY;
         })
 
         window.addEventListener('resize', ()=>{this.rescale()})
@@ -385,7 +405,7 @@ let viewModel = new class {
                 })
             } 
             else if(binding.node.type === "checkbox") {
-                binding.node.checked = binding.checked
+                binding.node.checked = binding.value
             }
             else if(binding.node.type === "radio") {
                 binding.node.checked = binding.node.value === binding.value
@@ -401,6 +421,14 @@ let viewModel = new class {
                     if(binding.node.checked) binding.value = binding.node.value
                 }
             })
+            if(binding.input) {
+                binding.node.addEventListener('input', function() {
+                    print(parseFloat(binding.node.value), binding.value)
+                    if(parseFloat(binding.node.value) == binding.value) {
+                        binding.value = parseFloat(binding.node.value)
+                    }
+                })    
+            }
         })
         this.update()
     }
@@ -410,7 +438,7 @@ let viewModel = new class {
     }
 
     async rescale() {
-        this.preview.style.zoom = Math.min(this.preview.parentNode.clientWidth - 50, this.preview.parentNode.clientHeight - 50) / Math.max(this.options.page.width, this.options.page.height)
+        this.preview.style.zoom = Math.min(this.preview.parentNode.clientWidth - 25, this.preview.parentNode.clientHeight - 25) / Math.max(this.options.page.width, this.options.page.height)
     }
 
     async resize() {
@@ -465,6 +493,10 @@ let viewModel = new class {
             this.originals.splice(index, 1)
             node.remove()
             this.update()
+        })
+        node.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            this.originalsNode.scrollLeft += event.deltaY;
         })
         originals.insertBefore(node, originals.childNodes[0])
         this.originals.unshift(node)

@@ -3,36 +3,6 @@ class Generator {
         this.images = images
     }
 
-
-    // ----- Layouter ----- //
-
-    // {
-    //     page: {
-    //         width: Number,
-    //         height: Number,
-    //         margin: Number
-    //     },
-    //     content: {
-    //         width: Number?,
-    //         height: Number?,
-    //         count: Number?,
-    //         spacing: Number,
-    //         each: Number?
-    //         dpi: Number,
-    //         fit: Boolean,
-    //         bleed: {
-    //             width: Number,
-    //             type: String(inset, edge, mirror)
-    //         }
-
-    //     },
-    //     marks: {
-    //         length: Number,
-    //         offset: Number,
-    //         shown: Boolean
-    //     }
-    // }
-
     template(options) {
         let page = options.page
         let content = options.content
@@ -196,6 +166,14 @@ class Generator {
         context.fillRect(0,0,canvas.width,canvas.height)
 
         var cache = {}
+        var bounding = {lx: contents[0].main.x, ly: contents[0].main.y, rx: contents[0].main.x, ry: contents[0].main.y}
+        for(let i = 0; i < contents.length; i++) {
+            let content = contents[i]
+            bounding.lx = Math.min(bounding.lx, content.main.x)
+            bounding.ly = Math.min(bounding.ly, content.main.y)
+            bounding.rx = Math.max(bounding.rx, content.main.x + content.main.width)
+            bounding.ry = Math.max(bounding.ry, content.main.y + content.main.height)
+        }
 
         for(let i = 0; i < contents.length; i++) {
             let content = contents[i]
@@ -297,6 +275,38 @@ class Generator {
                 }
             }
             if(image !== undefined) { context.drawImage(cache[name], topleft.x, topleft.y, width, height) }
+
+            // ----- Add Crop Marks ----- //
+            context.strokeStyle = 'black'
+            context.lineWidth = 1
+            let marks = options.marks
+            function cropMark(start, horizontal) {
+                context.beginPath();
+                context.moveTo(start.x, start.y);
+                context.lineTo(start.x + (horizontal ? marks.length : 0), start.y + (!horizontal ? marks.length : 0));
+                context.stroke();
+            }
+            let umain = content.main
+            if(umain.x == bounding.lx) {
+                let x = umain.x-marks.offset-marks.length-content.left.width
+                cropMark({x, y: umain.y}, true)
+                cropMark({x, y: umain.y + umain.height}, true)    
+            }
+            if(umain.x+umain.width == bounding.rx) {
+                let x = umain.x+umain.width+marks.offset+content.right.width
+                cropMark({x, y: umain.y + umain.height}, true)
+                cropMark({x, y: umain.y}, true)    
+            }
+            if(umain.y == bounding.ly) {
+                let y = umain.y-marks.offset-marks.length-content.top.height
+                cropMark({x: umain.x, y}, false)
+                cropMark({x: umain.x+umain.width, y}, false)
+            }
+            if(umain.y+umain.height == bounding.ry) {
+                let y = umain.y+umain.height+marks.offset+content.bottom.height
+                cropMark({x: umain.x, y}, false)
+                cropMark({x: umain.x+umain.width, y}, false)
+            }
         }
 
         return canvas
