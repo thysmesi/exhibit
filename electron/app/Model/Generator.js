@@ -198,13 +198,16 @@ class Generator {
         context.fillRect(0,0,canvas.width,canvas.height)
 
         var cache = {}
-        var bounding = {lx: contents[0].main.x, ly: contents[0].main.y, rx: contents[0].main.x, ry: contents[0].main.y}
-        for(let i = 0; i < contents.length; i++) {
-            let content = contents[i]
-            bounding.lx = Math.min(bounding.lx, content.main.x)
-            bounding.ly = Math.min(bounding.ly, content.main.y)
-            bounding.rx = Math.max(bounding.rx, content.main.x + content.main.width)
-            bounding.ry = Math.max(bounding.ry, content.main.y + content.main.height)
+        let bounding = {}
+        if(contents.length > 0) {
+            bounding = {lx: contents[0].main.x, ly: contents[0].main.y, rx: contents[0].main.x, ry: contents[0].main.y}
+            for(let i = 0; i < contents.length; i++) {
+                let content = contents[i]
+                bounding.lx = Math.min(bounding.lx, content.main.x)
+                bounding.ly = Math.min(bounding.ly, content.main.y)
+                bounding.rx = Math.max(bounding.rx, content.main.x + content.main.width)
+                bounding.ry = Math.max(bounding.ry, content.main.y + content.main.height)
+            }    
         }
 
         for(let i = 0; i < contents.length; i++) {
