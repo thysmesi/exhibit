@@ -12,6 +12,7 @@ function createWindow() {
     })
 
     win.loadFile('app/View/index.html')
+    win.removeMenu()
 }
 
 app.whenReady().then(() => {
@@ -23,7 +24,6 @@ app.on('window-all-closed', function () {
 })
 
 app.whenReady().then(() => {
-    createWindow()
     app.on('activate', function () {
         if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })

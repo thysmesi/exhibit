@@ -2,3 +2,5 @@ node_modules/
 /svelte/public/build/
 
 .DS_Store
+
+Exhibit-darwin-x64
