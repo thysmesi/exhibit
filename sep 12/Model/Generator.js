@@ -151,8 +151,7 @@ class Generator {
                 })
             }
         }
-
-        return {contents, options}
+        return {contents, options, placement: {horizontal: useful.horizontal, vertical: useful.vertical}}
     }
 
     async render({contents, options}, page) {
@@ -208,9 +207,15 @@ class Generator {
             let image
 
             if(options.content.each === null || options.content.each === false) {
-                image = this.images[page-1]
+                let index = page-1
+                if(index >= 0 && this.images.length > index) {
+                    image = this.images[index].image
+                }
             } else {
-                image = this.images[Math.floor(((page-1)*(contents.length)+i) / options.content.each)]
+                let index = Math.floor(((page-1)*(contents.length)+i) / options.content.each)
+                if(index >= 0 && this.images.length > index) {
+                    image = this.images[index].image
+                }
             }
 
             if(cache[name] === undefined) {
@@ -219,7 +224,11 @@ class Generator {
                 canvas.height = main.height+top.height+bottom.height
                 let context = canvas.getContext('2d')
                 if(image !== undefined) {
-                    image = await image.fill({width: main.width, height: main.height})
+                    if(options.content.fit) {
+                        image = await image.fit({width: main.width, height: main.height})
+                    } else {
+                        image = await image.fill({width: main.width, height: main.height})
+                    }
                     image.horizontal = image.clone().flipX()  
                     image.vertical = image.clone().flipY()
                     image.all = image.vertical.clone().flipX()
@@ -277,35 +286,39 @@ class Generator {
             if(image !== undefined) { context.drawImage(cache[name], topleft.x, topleft.y, width, height) }
 
             // ----- Add Crop Marks ----- //
-            context.strokeStyle = 'black'
-            context.lineWidth = 1
-            let marks = options.marks
-            function cropMark(start, horizontal) {
-                context.beginPath();
-                context.moveTo(start.x, start.y);
-                context.lineTo(start.x + (horizontal ? marks.length : 0), start.y + (!horizontal ? marks.length : 0));
-                context.stroke();
-            }
-            let umain = content.main
-            if(umain.x == bounding.lx) {
-                let x = umain.x-marks.offset-marks.length-content.left.width
-                cropMark({x, y: umain.y}, true)
-                cropMark({x, y: umain.y + umain.height}, true)    
-            }
-            if(umain.x+umain.width == bounding.rx) {
-                let x = umain.x+umain.width+marks.offset+content.right.width
-                cropMark({x, y: umain.y + umain.height}, true)
-                cropMark({x, y: umain.y}, true)    
-            }
-            if(umain.y == bounding.ly) {
-                let y = umain.y-marks.offset-marks.length-content.top.height
-                cropMark({x: umain.x, y}, false)
-                cropMark({x: umain.x+umain.width, y}, false)
-            }
-            if(umain.y+umain.height == bounding.ry) {
-                let y = umain.y+umain.height+marks.offset+content.bottom.height
-                cropMark({x: umain.x, y}, false)
-                cropMark({x: umain.x+umain.width, y}, false)
+            if(options.marks.shown) {
+                context.strokeStyle = 'black'
+                context.lineWidth = 1
+                let marks = options.marks
+                function cropMark(start, horizontal) {
+                    context.fillStyle = 'white'
+                    context.fillRect(start.x,start.y,(horizontal ? marks.length : 2),(!horizontal ? marks.length : 2));
+                    context.beginPath();
+                    context.moveTo(start.x, start.y);
+                    context.lineTo(start.x + (horizontal ? marks.length : 0), start.y + (!horizontal ? marks.length : 0));
+                    context.stroke();
+                }
+                let umain = content.main
+                if(umain.x == bounding.lx) {
+                    let x = umain.x-marks.offset-marks.length-content.left.width
+                    cropMark({x, y: umain.y}, true)
+                    cropMark({x, y: umain.y + umain.height}, true)    
+                }
+                if(umain.x+umain.width == bounding.rx) {
+                    let x = umain.x+umain.width+marks.offset+content.right.width
+                    cropMark({x, y: umain.y + umain.height}, true)
+                    cropMark({x, y: umain.y}, true)    
+                }
+                if(umain.y == bounding.ly) {
+                    let y = umain.y-marks.offset-marks.length-content.top.height
+                    cropMark({x: umain.x, y}, false)
+                    cropMark({x: umain.x+umain.width, y}, false)
+                }
+                if(umain.y+umain.height == bounding.ry) {
+                    let y = umain.y+umain.height+marks.offset+content.bottom.height
+                    cropMark({x: umain.x, y}, false)
+                    cropMark({x: umain.x+umain.width, y}, false)
+                }
             }
         }
 

@@ -25,3 +25,7 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: rgb(231, 231, 231);
 }
+
+.dimmed {
+    filter: brightness(0.65);
+}

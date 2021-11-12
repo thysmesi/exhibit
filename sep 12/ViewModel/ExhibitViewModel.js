@@ -15,6 +15,19 @@ function steralizePage(viewModel){
     // let max = Math.ceil(viewModel.originals.length * (viewModel.options.content.each ? viewModel.options.content.each : viewModel.count) / viewModel.count)
     viewModel.page = Math.max(viewModel.originals.length>0 ? 1 : 0, Math.min(viewModel.max, viewModel.page))
 }
+// var gd = function(a) {
+//     let b = a
+//     var best = a
+//     while (b > 0) {
+//         if(a % b == 0) {
+//             if((a / b) + b < best) {
+//                 best = b
+//             }
+//         }
+//         b--
+//     }
+//     return best
+// }
 async function readAsText(file){
     return new Promise(resolve =>{
         let reader = new FileReader()
@@ -77,7 +90,7 @@ let viewModel = new class {
                 }
             }, {
                 node: document.getElementById("page-margin"),
-                get max(){ return min(_this.options["page"]["width"], _this.options["page"]["height"]) },
+                get max(){ return Math.min(_this.options["page"]["width"], _this.options["page"]["height"]) },
                 min: 0,
                 get value() {
                     return _this.options["page"]["margin"] / 72
@@ -88,51 +101,8 @@ let viewModel = new class {
                     _this.update()
                 }
             }, {
-                node: document.getElementById("content-width"),
-                get max(){ return _this.options["page"]["width"] },
-                min: 0.5,
-                get value() {
-                    return _this.options["content"]["width"] / 72
-                },
-                set value(value) {
-                    _this.options["content"]["width"] =  value * 72
-                    this.node.value = value 
-                    _this.update()
-                }
-            }, {
-                node: document.getElementById("content-height"),
-                get max(){ return _this.options["page"]["height"] },
-                min: 0.5,
-                get value() {
-                    return _this.options["content"]["height"] / 72
-                },
-                set value(value) {
-                    _this.options["content"]["height"] =  value * 72
-                    this.node.value = value 
-                    _this.update()
-                }
-            }, {
-                node: document.getElementById("content-count"),
-                max: 50,
-                min: 0,
-                input: true,
-                get value() {
-                    return parseFloat(_this.countInput.value)
-                },
-                set value(value) {
-                    print(value)
-                    let width = _this.options["page"]["width"]
-                    let height = _this.options["page"]["height"]
-                    let margin = _this.options["page"]["margin"]
-                    let spacing = _this.options["content"]["spacing"]
-
-                    let marginBox = {width: width - margin, height: height - margin}
-                    
-                    _this.update()
-                }
-            }, {
                 node: document.getElementById("content-spacing"),
-                get max(){ return min(_this.options["page"]["width"], _this.options["page"]["height"])/2-0.5 },
+                get max(){ return Math.min(_this.options["page"]["width"], _this.options["page"]["height"])/2-0.5 },
                 min: 0,
                 get value() {
                     return _this.options["content"]["spacing"] / 72
@@ -157,7 +127,7 @@ let viewModel = new class {
                 }
             }, {
                 node: document.getElementById("content-dpi"),
-                max: 2400,
+                max: 1200,
                 min: 72,
                 get value() {
                     return _this.options["content"]["dpi"]
@@ -179,17 +149,17 @@ let viewModel = new class {
             }, {
                 node: document.getElementById("content-bleed-width"),
                 min: 0,
+                max: 1,
                 get value() {
                     return _this.options["content"]["bleed"]["width"] / 72
                 },
                 set value(value) {
-                    _this.options["content"]["bleed"]["width"] =  value * 72
+                    _this.options["content"]["bleed"]["width"] = value * 72
                     this.node.value = value 
                     _this.update()
                 }
             }, {
                 node: document.getElementById("content-bleed-type-mirror"),
-                min: 0,
                 get value() {
                     return _this.options["content"]["bleed"]["type"]
                 },
@@ -199,7 +169,6 @@ let viewModel = new class {
                 }
             }, {
                 node: document.getElementById("content-bleed-type-inset"),
-                min: 0,
                 get value() {
                     return _this.options["content"]["bleed"]["type"]
                 },
@@ -209,7 +178,6 @@ let viewModel = new class {
                 }
             }, {
                 node: document.getElementById("content-bleed-type-edge"),
-                min: 0,
                 get value() {
                     return _this.options["content"]["bleed"]["type"]
                 },
@@ -231,8 +199,8 @@ let viewModel = new class {
                 }
             }, {
                 node: document.getElementById("marks-offset"),
-                min: 0,
-                max: 1,
+                min: -10,
+                max: 10,
                 get value() {
                     return _this.options["marks"]["offset"] / 72
                 },
@@ -254,7 +222,7 @@ let viewModel = new class {
             
         ]
         this.originals = []
-
+        this.dimMode = true
         this.model = new Generator()
         this.notification = {
             container: document.getElementById("notification-container"),
@@ -284,8 +252,11 @@ let viewModel = new class {
                 width: 5*72,
                 height: 7*72,
                 spacing: .125*72,
+                count: {
+                    width: 1,
+                    height: 2
+                },
                 each: false,
-                count: false,
                 dpi: 300,
                 fit: false,
                 bleed: {
@@ -294,8 +265,8 @@ let viewModel = new class {
                 }
             },
             marks: {
-                length: .125*72,
-                offset: 0,
+                length: 1*72,//.125*72,
+                offset: -0.025*72,
                 shown: true
             }
         }
@@ -309,7 +280,88 @@ let viewModel = new class {
         this.originalCount = document.getElementById('original-count')
         this.originalInput = document.getElementById("original-uploader")
         this.addOriginalButton = document.getElementById("add-original-button")
-        this.countInput = document.getElementById('content-count')
+        this.countWidthInput = document.getElementById('content-count-width')
+        this.countHeightInput = document.getElementById('content-count-height')
+        this.countInputClicker = document.getElementById('content-count-clicker')
+        this.heightInputClicker = document.getElementById('content-height-clicker')
+        this.widthInputClicker = document.getElementById('content-width-clicker')
+        this.heightInput = document.getElementById('content-height')
+        this.widthInput = document.getElementById('content-width')
+        
+        this.countInputClicker.addEventListener('dblclick', ()=>{
+            this.dimMode = false
+            this.countWidthInput.classList.remove('dimmed')
+            this.countWidthInput.disabled = false
+            this.countHeightInput.classList.remove('dimmed')
+            this.countHeightInput.disabled = false
+            this.heightInput.classList.add('dimmed')
+            this.heightInput.disabled = true
+            this.widthInput.classList.add('dimmed')    
+            this.widthInput.disabled = true
+            this.update()
+        })
+        const enableDimMode = () => {
+            this.dimMode = true
+            this.countWidthInput.classList.add('dimmed')
+            this.countWidthInput.disabled = true
+            this.countHeightInput.classList.add('dimmed')
+            this.countHeightInput.disabled = true
+            this.heightInput.classList.remove('dimmed')
+            this.heightInput.disabled = false
+            this.widthInput.classList.remove('dimmed')    
+            this.widthInput.disabled = false
+            this.update()
+        }
+        this.heightInputClicker.addEventListener('dblclick', enableDimMode)
+        this.widthInputClicker.addEventListener('dblclick', enableDimMode)
+        this.widthInput.value = this.options.content.width/72
+        this.widthInput.addEventListener('mouseup', () => {
+            this.widthInput.select()
+        })
+        this.heightInput.value = this.options.content.height/72
+        this.heightInput.addEventListener('mouseup', () => {
+            this.heightInput.select()
+        })
+        this.countWidthInput.addEventListener('mouseup', () => {
+            this.countWidthInput.select()
+        })
+        this.countHeightInput.addEventListener('mouseup', () => {
+            this.countHeightInput.select()
+        })
+        this.widthInput.addEventListener('change', ()=> {
+            if(isNaN(parseFloat(this.widthInput.value))) {
+                this.widthInput.value = 0
+            }
+            this.options.content.width = Math.max(0.5,Math.min(this.options.page.width/72,parseFloat(this.widthInput.value))) * 72
+            this.widthInput.value = this.options.content.width/72
+            this.update()
+        })
+        this.heightInput.addEventListener('change', ()=> {
+            if(isNaN(parseFloat(this.heightInput.value))) {
+                this.heightInput.value = 0
+            }
+            this.options.content.height = Math.max(0.5,Math.min(this.options.page.height/72,parseFloat(this.heightInput.value))) * 72
+            this.heightInput.value = this.options.content.height/72
+            this.update()
+        })
+        
+        this.countWidthInput.addEventListener('change', ()=> {
+            if(isNaN(parseFloat(this.countWidthInput.value))) {
+                this.countWidthInput.value = 0
+            }
+            this.options.content.count.width = Math.max(1, parseFloat(this.countWidthInput.value))
+            this.update()
+        })
+        this.countHeightInput.addEventListener('change', ()=> {
+            if(isNaN(parseFloat(this.countHeightInput.value))) {
+                this.countHeightInput.value = 0
+            }
+            this.options.content.count.height = Math.max(1, parseFloat(this.countHeightInput.value))
+            this.update()
+        })
+
+
+
         this.originalInput.addEventListener('input', async (event) => {
             this.notification.show()
             for(let i = 0; i < event.target.files.length; i++){
@@ -338,16 +390,24 @@ let viewModel = new class {
                     canvas.height = canvas.width / aspect
                     context.drawImage(image,0,0,canvas.width,canvas.height)
     
-                    await this.addOriginal(canvas.toDataURL())
+                    await this.addOriginal(canvas.toDataURL(), file)
                     
                 }
                 if(defaultSupported.includes(extension)) {
-                    await this.addOriginal(URL.createObjectURL(file))
+                    await this.addOriginal(URL.createObjectURL(file), file)
                 }
                 if(extension == 'tiff' || extension == 'tif') {
                     let buffer = await readAsArrayBuffer(file)
                     let tiff = new Tiff({buffer: buffer})
-                    await this.addOriginal(tiff.toCanvas().toDataURL())
+                    await this.addOriginal(tiff.toCanvas().toDataURL(), file)
+                }
+                if(extension == 'heic') {
+                    let blob = await heic2any({
+                        blob: file,
+                        toType: "image/png",
+                        quality: 1
+                    })
+                    await this.addOriginal(URL.createObjectURL(blob), file)       
                 }
                 if(extension == 'pdf') {
                     let typedarray = new Uint8Array(await readAsArrayBuffer(file))
@@ -361,14 +421,14 @@ let viewModel = new class {
                         let viewport = page.getViewport()
                         let aspect = viewport.viewBox[2] / viewport.viewBox[3]
                         
-                        viewport = page.getViewport({ scale:  2000 / viewport.viewBox[2] })
+                        viewport = page.getViewport({ scale:  1000 / viewport.viewBox[2] })
                         let canvas = document.createElement('canvas')
                         let context = canvas.getContext('2d')
-                        canvas.width = 2000
-                        canvas.height = 2000 / aspect
+                        canvas.width = 1000
+                        canvas.height = 1000 / aspect
 
                         await page.render({canvasContext: context, viewport: viewport}).promise
-                        await this.addOriginal(canvas.toDataURL())
+                        await this.addOriginal(canvas.toDataURL(), file)
                     }
                 }
             }
@@ -395,7 +455,6 @@ let viewModel = new class {
             event.preventDefault();
             this.originalsNode.scrollLeft += event.deltaY;
         })
-
         window.addEventListener('resize', ()=>{this.rescale()})
         this.bindings.forEach(binding => {
             if(binding.node.type === "text") {
@@ -412,7 +471,7 @@ let viewModel = new class {
             }
             binding.node.addEventListener('change', function() {
                 if(binding.node.type === "text") {
-                    binding.value = parseFloat(binding.node.value)
+                    binding.value = Math.max(binding.min,Math.min(binding.max,parseFloat(binding.node.value)))
                 } 
                 else if(binding.node.type === "checkbox") {
                     binding.value = binding.node.checked
@@ -421,20 +480,12 @@ let viewModel = new class {
                     if(binding.node.checked) binding.value = binding.node.value
                 }
             })
-            if(binding.input) {
-                binding.node.addEventListener('input', function() {
-                    print(parseFloat(binding.node.value), binding.value)
-                    if(parseFloat(binding.node.value) == binding.value) {
-                        binding.value = parseFloat(binding.node.value)
-                    }
-                })    
-            }
         })
         this.update()
     }
 
-    async addOriginal(image){
-        await viewModel.insertImageBase64(image)
+    async addOriginal(image, file){
+        await viewModel.insertImageBase64(image, file)
     }
 
     async rescale() {
@@ -449,18 +500,41 @@ let viewModel = new class {
 
     async update() {
         this.resize()
+        if(!this.dimMode) {
+            let spacing = this.options.content.spacing
+            let box = {
+                width: this.options.page.width - (this.options.page.margin * 2) + spacing,
+                height: this.options.page.height - (this.options.page.margin * 2) + spacing
+            }
+            let countWidthvalue = Math.max(1,Math.min(Math.floor(box.width/((0.5*72)+spacing)),parseFloat(this.countWidthInput.value)))
+            let countHeightValue = Math.max(1,Math.min(Math.floor(box.height/((0.5*72)+spacing)),parseFloat(this.countHeightInput.value)))
+            this.countHeightInput.value = countHeightValue
+            this.countWidthInput.value = countWidthvalue
+            this.options.content.count.height = countHeightValue
+            this.options.content.count.width = countWidthvalue
+
+            this.options.content.width = box.width / countWidthvalue - spacing
+            this.options.content.height = box.height / countHeightValue - spacing
+            this.widthInput.value = this.options.content.width / 72
+            this.heightInput.value = this.options.content.height / 72
+        }
         let templete = this.model.template(this.options)
         this.max = Math.ceil(this.originals.length * (this.options.content.each ? this.options.content.each : templete.contents.length) / templete.contents.length)
         steralizePage(this)
-        this.countInput.value = templete.contents.length
+        if(this.dimMode) {
+            this.countWidthInput.value = templete.placement.horizontal
+            this.countHeightInput.value = templete.placement.vertical
+            this.options.content.count.width = templete.placement.horizontal
+            this.options.content.count.height = templete.placement.vertical
+        }
         this.context.drawImage(await this.model.render(templete, this.page, parseFloat(this.preview.style.zoom)),0,0)
         this.originalIndex.innerText = this.page
         this.originalCount.innerText = this.max
     }
 
-    async insertImageBase64(base64) {
+    async insertImageBase64(base64, file) {
         let image = await IJS.Image.load(base64)
-        this.model.images.unshift(image)
+        this.model.images.unshift({image, file})
 
         let originals = document.getElementById('originals')
         let id = `idp${Math.random() * 1000}`

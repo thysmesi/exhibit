@@ -14,7 +14,7 @@
 </head>
 <body>
     <nav>
-        <section>
+        <section style="margin-top: 10px;">
             <h3>Page</h3>
             <div class="options"> 
                 <div class="labels" style="height: 90px;">
@@ -42,9 +42,17 @@
                     <label for="content-fit">Fit: </label>
                 </div>
                 <div class="inputs" style="height: 202.5px;">
-                    <input id="content-width" type="text">  
-                    <input id="content-height" type="text"> 
-                    <input id="content-count" type="text"> 
+                    <div id="content-width-clicker">
+                        <input id="content-width" type="text">  
+                    </div>
+                    <div id="content-height-clicker">
+                        <input id="content-height" type="text"> 
+                    </div>
+                    <div id="content-count-clicker">
+                        <input id="content-count-width" class="dimmed smaller" style="width: 27px; padding: 0;" disabled type="text"> 
+                        x
+                        <input id="content-count-height" class="dimmed smaller" style="width: 27px; padding: 0;" disabled type="text"> 
+                    </div>
                     <input id="content-spacing" type="text">  
                     <input id="content-each" type="text"> 
                     <input id="content-dpi" type="text"> 
@@ -105,7 +113,7 @@
         <img class="carret" src="../assets/carret-right.svg" onclick="increasePage()">
     </div>
 
-    <input id="original-uploader" type="file" accept="image/*,.pdf,.tiff,.svg" multiple>
+    <input id="original-uploader" type="file" accept="image/*,.pdf,.tiff,.svg,.heic" multiple>
 
     <div id="notification-container">
         <div id="notification-background"></div>
@@ -120,6 +128,7 @@
     <script src="../lib/image-js/image.js"></script>
     <script src="../lib/tiff.js"></script>
     <script src="../lib/pdf-js/build/pdf.js"></script>
+    <script src="../lib/heic2any.js"></script>
     <script src="../Model/Extensions/IJS.Image+resizingData.js"></script>
     <script src="../Model/Extensions/IJS.Image+fill.js"></script>
     <script src="../Model/Extensions/IJS.Image+fit.js"></script>
