@@ -357,7 +357,7 @@ class Generator {
 
         return canvas
     }
-    async generate({contents, options}, dpi, notification) {
+    async generate({contents, options}, dpi, name, notification) {
         let pages = Math.ceil(this.images.length * (options.content.each ? options.content.each : contents.length) / contents.length)
 
         let parsed = []
@@ -500,6 +500,10 @@ class Generator {
                 }
                 if(!image) {
                     image = await IJS.Image.load(emptyImageString)
+                    image = image.resize({
+                        width: main.width,
+                        height: main.height
+                    })
                 }
                 if(options.content.fit) {
                     image = await image.fit({width: main.width, height: main.height})
@@ -514,7 +518,8 @@ class Generator {
                 let images = {}
                 switch (options.content.bleed.type) {
                     case 'inset' : {
-                        context.drawImage(image.getCanvas(),0,0,width, height)
+                        images.main = image.getCanvas()
+                        // context.drawImage(image.getCanvas(),0,0,width, height)
                         break
                     }
                     case 'edge' : {
@@ -578,17 +583,55 @@ class Generator {
                     docDefinition.content.push(node)
                 }
 
+                function drawMarks(){
+                    if(options.marks.shown) {
+                        let marks = options.marks
+                        let lx = content.main.x-marks.offset-marks.length-content.left.width
+                        let rx = content.main.x+content.main.width+marks.offset+content.right.width
+                        let ty = content.main.y-marks.offset-marks.length-content.top.height
+                        let by = content.main.y+content.main.height+marks.offset+content.bottom.height
+
+                        if(content.main.y+content.main.height==bounding.ry) {
+                            cropMark({x: content.main.x, y: by}, false, false)
+                            cropMark({x: content.main.x+content.main.width, y: by}, false, false)    
+                        }
+                        if(content.main.y == bounding.ly ) {
+                            cropMark({x: content.main.x, y: ty}, false, false)
+                            cropMark({x: content.main.x+content.main.width, y: ty}, false, false)    
+                        }
+                        if(content.main.x+content.main.width==bounding.rx) {
+                            cropMark({x: rx, y: content.main.y}, true, false)
+                            cropMark({x: rx, y: content.main.y+content.main.height}, true, false)    
+                        }
+                        if(content.main.x == bounding.lx) {
+                            cropMark({x: lx, y: content.main.y}, true, false)
+                            cropMark({x: lx, y: content.main.y+content.main.height}, true, i == contents.length-1 && page != pages && pages > 1)
+                        }
+                    }
+                }
+
                 Object.keys(images).forEach(key => {
                     if(key == "main") {
                         if(!docDefinition.images[`mt${original}`]) {
                             docDefinition.images[`mt${original}`] = images[key].toDataURL()
                         }
-                        docDefinition.content.push({
-                            image: `mt${original}`,
-                            width: content.main.width,
-                            height: content.main.height,
-                            absolutePosition: { x: main.x, y: main.y}
-                        })
+                        if(options.content.bleed.type == 'inset') {
+                            docDefinition.content.push({
+                                image: `mt${original}`,
+                                width: content.main.width+content.left.width+content.right.width,
+                                height: content.main.height+content.top.height+content.bottom.height,
+                                absolutePosition: { x: topleft.x, y: topleft.y}
+                            })
+    
+                            drawMarks()
+                        } else {
+                            docDefinition.content.push({
+                                image: `mt${original}`,
+                                width: content.main.width,
+                                height: content.main.height,
+                                absolutePosition: { x: main.x, y: main.y}
+                            })    
+                        }
                     }
                     if(key == "right") {
                         if(!docDefinition.images[`r${right.width}t${original}`]) {
@@ -677,31 +720,7 @@ class Generator {
                             height: content.bottomright.height,
                             absolutePosition: { x: content.bottomright.x, y: content.bottomright.y}
                         })
-
-                        if(options.marks.shown) {
-                            let marks = options.marks
-                            let lx = content.main.x-marks.offset-marks.length-content.left.width
-                            let rx = content.main.x+content.main.width+marks.offset+content.right.width
-                            let ty = content.main.y-marks.offset-marks.length-content.top.height
-                            let by = content.main.y+content.main.height+marks.offset+content.bottom.height
-
-                            if(content.main.y+content.main.height==bounding.ry) {
-                                cropMark({x: content.main.x, y: by}, false, false)
-                                cropMark({x: content.main.x+content.main.width, y: by}, false, false)    
-                            }
-                            if(content.main.y == bounding.ly ) {
-                                cropMark({x: content.main.x, y: ty}, false, false)
-                                cropMark({x: content.main.x+content.main.width, y: ty}, false, false)    
-                            }
-                            if(content.main.x+content.main.width==bounding.rx) {
-                                cropMark({x: rx, y: content.main.y}, true, false)
-                                cropMark({x: rx, y: content.main.y+content.main.height}, true, false)    
-                            }
-                            if(content.main.x == bounding.lx) {
-                                cropMark({x: lx, y: content.main.y}, true, false)
-                                cropMark({x: lx, y: content.main.y+content.main.height}, true, i == contents.length-1 && page != pages && pages > 1)
-                            }
-                        }
+                        drawMarks()
                     }
                 })
             }
@@ -709,6 +728,7 @@ class Generator {
 
         notification.setMessage('Creating Download')
         notification.setStatus(1)
-        await pdfMake.createPdf(docDefinition).download();
+        print(name)
+        await pdfMake.createPdf(docDefinition).download(name + '.pdf');
     }
 }

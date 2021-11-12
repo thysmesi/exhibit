@@ -266,18 +266,20 @@ let viewModel = new class {
 
             this.exportContainer.style.display = 'none'
 
-            await this.model.generate(this.model.template(this.options), this.exportDPI, this.notification)
+            await this.model.generate(this.model.template(this.options), this.exportDPI, this.exportName, this.notification)
 
             this.notification.hide()
         })
         this.fileNameInput = document.getElementById('file-name-input')
+        let startName = `asdf${`${Math.random()*1000000 + 1}`.substring(1,5)}`
         this.fileNameInput.addEventListener('change', () => {
             this.exportName = this.fileNameInput.value
             if(this.exportName.length == 0) {
-                this.exportName = `asdf${`${Math.random()*100000 + 1}`.substring(1,5)}`
+                this.exportName = `asdf${`${Math.random()*1000000 + 1}`.substring(1,5)}`
             }
         })
-        this.fileNameInput.value = `asdf${`${Math.random()*100000 + 1}`.substring(1,5)}`
+        this.fileNameInput.value = startName
+        this.exportName = startName
         this.exportOptions = []
         this.navExportButton.addEventListener('click', ()=>{
             this.exportContainer.style.display = 'flex'
