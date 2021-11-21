@@ -1,1 +1,1 @@
-npx electron-packager ./ Exhibit --darwin --overwrite --icon=build/icon.icns
+npx electron-packager ./ Exhibit --all --overwrite --icon=build/icon.icns
